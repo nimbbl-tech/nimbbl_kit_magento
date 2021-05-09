@@ -211,7 +211,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             }
 
             $orderLinkCollection->setWebhookCount($orderLink['webhook_count'] + 1)
-                                ->setRzpPaymentId($paymentId)
+                                ->setNimbblPaymentId($paymentId)
                                 ->save();
 
 
@@ -285,9 +285,9 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         if (empty($salesOrder['entity_id']) === false)
         {
             $order = $this->order->load($salesOrder['entity_id']);
-            $orderRzpPaymentId = $order->getPayment()->getLastTransId();
+            $orderNimbblPaymentId = $order->getPayment()->getLastTransId();
 
-            if ($orderRzpPaymentId === $paymentId)
+            if ($orderNimbblPaymentId === $paymentId)
             {
                 $this->logger->info("Nimbbl Webhook: Sales Order and payment already exist for Nimbbl payment_id(:$paymentId)");
 
@@ -315,7 +315,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             return;
         }
 
-        //verify Rzp OrderLink status
+        //verify Nimbbl OrderLink status
         $orderLinkCollection = $this->_objectManager->get('Nimbbl\Magento\Model\OrderLink')
                                                    ->getCollection()
                                                    ->addFilter('quote_id', $quoteId)

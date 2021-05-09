@@ -3,5 +3,6 @@ var config = {
         '*': {
             transparent: 'Magento_Payment/transparent'
         }
-    }
+    },
+    deps: ['NimbblPromise', 'MicroModal']
 };

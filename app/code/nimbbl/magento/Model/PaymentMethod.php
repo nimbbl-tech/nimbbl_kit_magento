@@ -202,6 +202,8 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
             $request = $this->getPostData();
 
+            $this->_logger->debug("Nimbbl: PaymentMethod authorize invoked with: " . json_encode($request));
+
             $isWebhookCall = false;
 
             if((empty($request) === true) and (isset($_POST['nimbbl_signature']) === true))
@@ -225,11 +227,13 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             }
             else
             {
-                $payment_id = $request['paymentMethod']['additional_data']['nimbbl_payment_id'];
+                if (isset($request['paymentMethod']['additional_data']['nimbbl_payment_id'])) {
+                    $payment_id = $request['paymentMethod']['additional_data']['nimbbl_payment_id'];
+                }
 
                 $nimbbl_order_id = $this->order->getOrderId();
 
-                //validate RzpOrderamount with quote/order amount before signature
+                //validate NimbblOrderamount with quote/order amount before signature
                 $orderAmount = (int) (number_format($order->getGrandTotal() * 100, 0, ".", ""));
 
                 if ($orderAmount !== $this->order->getNimbblOrderAmount())
@@ -314,7 +318,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
         if (empty($orderLink['entity_id']) === false)
         {
 
-            $orderLinkCollection->setRzpPaymentId($paymentId)
+            $orderLinkCollection->setNimbblPaymentId($paymentId)
                                 ->setIncrementOrderId($order->getIncrementId());
 
             if ($isWebhookCall)

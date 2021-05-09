@@ -259,14 +259,14 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
                         if (empty($orderLinkData['entity_id']) === false)
                         {
-                            $orderLinkCollection->setRzpOrderId($order->id)
+                            $orderLinkCollection->setNimbblOrderId($order->id)
                                       ->save();
                         }
                         else
                         {
                             $orderLnik = $this->_objectManager->create('Nimbbl\Magento\Model\OrderLink');
                             $orderLnik->setQuoteId($receipt_id)
-                                      ->setRzpOrderId($order->id)
+                                      ->setNimbblOrderId($order->id)
                                       ->save();
                         }
 

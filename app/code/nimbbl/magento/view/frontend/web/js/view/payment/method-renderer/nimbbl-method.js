@@ -20,7 +20,7 @@ define(
             defaults: {
                 template: 'Nimbbl_Magento/payment/nimbbl-form',
                 nimbblDataFrameLoaded: false,
-                nimbbl_response: {}
+                rzp_response: {}
             },
             getMerchantName: function() {
                 return window.checkoutConfig.payment.nimbbl.merchant_name;
@@ -64,9 +64,12 @@ define(
                 var self = this._super(); //Resolves UI Error on Checkout
 
                 if (!self.nimbblDataFrameLoaded) {
-                    $.getScript("https://checkout.razorpay.com/v1/checkout.js", function() {
-                        self.nimbblDataFrameLoaded = true;
-                    });
+                    // $.getScript("https://checkout.razorpay.com/v1/checkout.js", function() {
+                    //     self.nimbblDataFrameLoaded = true;
+                    // });
+                    // $.getScript("https://uatapi.nimbbl.tech/static/assets/js/checkout.js", function() {
+                    //     self.nimbblDataFrameLoaded = true;
+                    // });
                 }
 
                 return self;
@@ -84,7 +87,7 @@ define(
 
                 var self = this,
                     billing_address,
-                    nimbbl_order_id;
+                    rzp_order_id;
 
                 fullScreenLoader.startLoader();
                 this.messageContainer.clear();
@@ -223,7 +226,7 @@ define(
                     key: self.getKeyId(),
                     name: self.getMerchantName(),
                     amount: data.amount,
-                    order_id: data.nimbbl_order,
+                    order_id: data.rzp_order,
                     notes: {
                         merchant_order_id: '',
                         merchant_quote_id: data.order_id
@@ -258,7 +261,7 @@ define(
                 form.submit();
             },
 
-            createNimbblOrder: function(data) {
+            checkNimbblOrder: function(data) {
                 var self = this;
 
                 $.ajax({
@@ -276,7 +279,7 @@ define(
                             if (response.order_id) {
                                 $(location).attr('href', 'onepage/success?' + Math.random().toString(36).substring(10));
                             } else {
-                                setTimeout(function() { self.createNimbblOrder(data); }, 1500);
+                                setTimeout(function() { self.checkNimbblOrder(data); }, 1500);
                             }
                         } else {
                             self.placeOrder(data);
@@ -304,10 +307,10 @@ define(
                     name: self.getMerchantName(),
                     amount: data.amount,
                     handler: function(data) {
-                        self.nimbbl_response = data;
-                        self.createNimbblOrder(data);
+                        self.rzp_response = data;
+                        self.checkNimbblOrder(data);
                     },
-                    order_id: data.nimbbl_order,
+                    order_id: data.rzp_order,
                     modal: {
                         ondismiss: function() {
                             self.isPaymentProcessing.reject("Payment Closed");
@@ -335,9 +338,9 @@ define(
                     options.display_amount = data.quote_amount;
                 }
 
-                this.nimbbl = new NimbblCheckout(options);
+                this.rzp = new NimbblCheckout(options);
 
-                this.nimbbl.open();
+                this.rzp.open();
             },
 
             getData: function() {
@@ -345,9 +348,9 @@ define(
                     "method": this.item.method,
                     "po_number": null,
                     "additional_data": {
-                        nimbbl_payment_id: this.nimbbl_response.nimbbl_payment_id,
+                        rzp_payment_id: this.rzp_response.nimbbl_payment_id,
                         order_id: this.merchant_order_id,
-                        nimbbl_signature: this.nimbbl_response.nimbbl_signature
+                        rzp_signature: this.rzp_response.nimbbl_signature
                     }
                 };
             }
