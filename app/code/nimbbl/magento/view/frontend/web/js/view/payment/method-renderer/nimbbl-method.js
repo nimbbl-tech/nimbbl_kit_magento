@@ -302,45 +302,67 @@ define(
 
                 this.merchant_order_id = data.order_id;
 
+                // var options = {
+                //     key: self.getKeyId(),
+                //     name: self.getMerchantName(),
+                //     amount: data.amount,
+                //     handler: function(data) {
+                //         self.rzp_response = data;
+                //         self.checkNimbblOrder(data);
+                //     },
+                //     order_id: data.rzp_order,
+                //     modal: {
+                //         ondismiss: function() {
+                //             self.isPaymentProcessing.reject("Payment Closed");
+                //         }
+                //     },
+                //     notes: {
+                //         merchant_order_id: '',
+                //         merchant_quote_id: data.order_id
+                //     },
+                //     prefill: {
+                //         name: this.user.name,
+                //         contact: this.user.contact,
+                //         email: this.user.email
+                //     },
+                //     callback_url: url.build('nimbbl/payment/order'),
+                //     _: {
+                //         integration: 'magento',
+                //         integration_version: data.module_version,
+                //         integration_parent_version: data.maze_version,
+                //     }
+                // };
+
+                // if (data.quote_currency !== 'INR') {
+                //     options.display_currency = data.quote_currency;
+                //     options.display_amount = data.quote_amount;
+                // }
+
+                // Options for the nimbbl checkout.
                 var options = {
-                    key: self.getKeyId(),
-                    name: self.getMerchantName(),
-                    amount: data.amount,
-                    handler: function(data) {
-                        self.rzp_response = data;
-                        self.checkNimbblOrder(data);
+                    "access_key": self.getKeyId(), // Enter the Key ID generated from the Dashboard
+                    "order_id": data.nimbbl_order,
+                    // "callback_url": "https://uatshop.nimbbl.tech/api/callback",
+                    // "redirect": false,
+                    "callback_handler": function(response) {
+                        console.log('Merchant callback_handler invoked.');
+                        console.log(response);
+                        // let response_payload = {
+                        //     "payload": response
+                        // }
+                        // let stringify_response = JSON.stringify(response_payload);
+                        // let encoded_response = btoa(stringify_response);
+                        // location.href = 'https://uatshop.nimbbl.tech/thank-you?esponse=' + encoded_response;
                     },
-                    order_id: data.rzp_order,
-                    modal: {
-                        ondismiss: function() {
-                            self.isPaymentProcessing.reject("Payment Closed");
-                        }
-                    },
-                    notes: {
-                        merchant_order_id: '',
-                        merchant_quote_id: data.order_id
-                    },
-                    prefill: {
-                        name: this.user.name,
-                        contact: this.user.contact,
-                        email: this.user.email
-                    },
-                    callback_url: url.build('nimbbl/payment/order'),
-                    _: {
-                        integration: 'magento',
-                        integration_version: data.module_version,
-                        integration_parent_version: data.maze_version,
-                    }
+                    "custom": {},
                 };
 
-                if (data.quote_currency !== 'INR') {
-                    options.display_currency = data.quote_currency;
-                    options.display_amount = data.quote_amount;
-                }
+                // this.rzp = new NimbblCheckout(options);
+                // this.rzp.open();
 
-                this.rzp = new NimbblCheckout(options);
+                window.checkout = new NimbblCheckout(options);
+                window.checkout.open(data.nimbbl_order);
 
-                this.rzp.open();
             },
 
             getData: function() {

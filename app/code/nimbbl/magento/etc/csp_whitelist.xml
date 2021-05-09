@@ -16,5 +16,11 @@
                 <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
             </values>
         </policy>
+        <policy id="connect-src">
+            <values>
+                <value id="nimbbl_uat" type="host">uatapi.nimbbl.tech</value>
+                <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
+            </values>
+        </policy>
     </policies>
 </csp_whitelist>

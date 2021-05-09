@@ -2,7 +2,7 @@
 
 namespace Nimbbl\Magento\Controller\Payment;
 
-use Razorpay\Api\Api;
+// use Razorpay\Api\Api;
 use Nimbbl\Magento\Model\PaymentMethod;
 use Magento\Framework\Controller\ResultFactory;
 
@@ -212,41 +212,48 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                         'receipt' => $receipt_id,
                         'currency' => $this->getQuote()->getQuoteCurrencyCode(),
                         'payment_capture' => $payment_capture,
-                        'app_offer' => ($this->getDiscount() > 0) ? 1 : 0
+                        'app_offer' => ($this->getDiscount() > 0) ? 1 : 0,
+                        'billing_details' => json_decode($_POST['billing_address'], true),
+                        'email' => $_POST['email'],
                     ];
                     $this->logger->debug("Nimbbl: Creating order in RP with: " . json_encode($payload));
 
-                    $order = $this->rzp->order->create($payload);
+                    // $order = $this->rzp->order->create($payload);
+
+                    $order = $this->createOrder($payload);
 
                     $responseContent = [
                         'message'   => 'Unable to create your order. Please contact support.',
                         'parameters' => []
                     ];
 
-                    if (null !== $order && !empty($order->id))
+                    if (null !== $order && !empty($order['id']))
                     {
                         $this->logger->debug("Nimbbl: Order creation in RP done.");
                         $is_hosted = false;
 
-                        $merchantPreferences    = $this->getMerchantPreferences();
+                        // $merchantPreferences    = $this->getMerchantPreferences();
 
                         $responseContent = [
                             'success'           => true,
-                            'nimbbl_order'         => $order->id,
+                            'nimbbl_order'         => $order['id'],
                             'order_id'          => $receipt_id,
-                            'amount'            => $order->amount,
+                            'amount'            => $order['amount'],
                             'quote_currency'    => $this->getQuote()->getQuoteCurrencyCode(),
                             'quote_amount'      => number_format($this->getQuote()->getGrandTotal(), 2, ".", ""),
                             'maze_version'      => $maze_version,
                             'module_version'    => $module_version,
-                            'is_hosted'         => $merchantPreferences['is_hosted'],
-                            'image'             => $merchantPreferences['image'],
-                            'embedded_url'      => $merchantPreferences['embedded_url'],
+                            // 'is_hosted'         => $merchantPreferences['is_hosted'],
+                            // 'image'             => $merchantPreferences['image'],
+                            // 'embedded_url'      => $merchantPreferences['embedded_url'],
+                            'is_hosted'         => false,
+                            'image'             => '',
+                            'embedded_url'      => '',
                         ];
 
                         $code = 200;
 
-                        $this->checkoutSession->setNimbblOrderID($order->id);
+                        $this->checkoutSession->setNimbblOrderID($order['id']);
                         $this->checkoutSession->setNimbblOrderAmount($amount);
 
                         //save to nimbbl orderLink
@@ -259,14 +266,14 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
                         if (empty($orderLinkData['entity_id']) === false)
                         {
-                            $orderLinkCollection->setNimbblOrderId($order->id)
+                            $orderLinkCollection->setNimbblOrderId($order['id'])
                                       ->save();
                         }
                         else
                         {
                             $orderLnik = $this->_objectManager->create('Nimbbl\Magento\Model\OrderLink');
                             $orderLnik->setQuoteId($receipt_id)
-                                      ->setNimbblOrderId($order->id)
+                                      ->setNimbblOrderId($order['id'])
                                       ->save();
                         }
 
@@ -310,32 +317,142 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         return $this->checkoutSession->getNimbblOrderAmount();
     }
 
-    protected function getMerchantPreferences()
+    protected function createOrder($payload)
     {
-        try
-        {
-            $api = new Api($this->config->getKeyId(),"");
+        $this->logger->debug("Nimbbl: Invoking Nimbbl CreateOrder API with payload: " . json_encode($payload));
+        // [2021-05-09 21:00:52] main.DEBUG: Nimbbl: Invoking Nimbbl CreateOrder API with payload: {"amount":10000,"receipt":"11","currency":"USD","payment_capture":1,"app_offer":0,"billing_details":{"countryId":"IN","regionId":"553","regionCode":"MH","region":"Maharashtra","street":["901 Yash Orion","I B Patel Road","Goregaon East"],"company":"","telephone":"9987027067","postcode":"400091","city":"Mumbai","firstname":"Harish","lastname":"Patel","saveInAddressBook":null}} [] []
 
-            $response = $api->request->request("GET", "preferences");
+        // First create the token.
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/generate-token',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS =>'{
+            "access_key": "'.$this->key_id.'",
+            "access_secret": "'.$this->key_secret.'"
         }
-        catch (\Razorpay\Api\Errors\Error $e)
-        {
-            echo 'Magento Error : ' . $e->getMessage();
-        }
+        ',
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: application/json'
+        ),
+        ));
 
-        $preferences = [];
+        $token_response = curl_exec($curl);
+        curl_close($curl);
 
-        $preferences['embedded_url'] = Api::getFullUrl("checkout/embedded");
-        $preferences['is_hosted'] = false;
-        $preferences['image'] = $response['options']['image'];
+        $this->logger->debug("Nimbbl: token response: " . $token_response);
 
-        if(isset($response['options']['redirect']) && $response['options']['redirect'] === true)
-        {
-            $preferences['is_hosted'] = true;
-        }
+        $token_response = json_decode($token_response, true);
 
-        return $preferences;
+        // Now create the actual order.
+        $curl = curl_init();
+
+        $nimbblPayload = [
+
+            "amount_before_tax"=>$payload['amount']/100,
+            "currency"=>"INR",
+            "invoice_id"=>$payload['receipt'],
+            // "device_user_agent"=>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
+            // "order_from_ip"=>"x.x.x.x",
+            "tax"=>0,
+            "user"=>[
+                "mobile_number"=>$payload['billing_details']['telephone'],
+                "email"=>$payload['email'],
+                "first_name"=>$payload['billing_details']['firstname'],
+                "last_name"=>$payload['billing_details']['lastname']
+            ],
+            "shipping_address"=>[
+
+                "address_1"=>"Some address",
+                "street"=>implode(',', $payload['billing_details']['street']),
+                // "landmark"=>"My landmark",
+                "area"=>"",
+                "city"=>$payload['billing_details']['city'],
+                "state"=>$payload['billing_details']['region'],
+                "pincode"=>$payload['billing_details']['postcode'],
+                "address_type"=>"residential"
+            
+            ],
+            "total_amount"=>$payload['amount'],
+            // "order_line_items"=>[
+            //     [
+                    
+            //         "referrer_platform_sku_id"=>"sku1",
+            //         "title"=>"Designer Triangles",
+            //         "description"=>"Wallpaper by  chenspec from Pixabay",
+            //         "quantity"=>1,
+            //         "rate"=>4,
+            //         "amount"=>4,
+            //         "total_amount"=>4,
+            //         "image_url"=>"https://cdn.pixabay.com/photo/2021/02/15/15/25/rhomboid-6018215_960_720.jpg"
+                
+            //     ]
+            // ]
+        ];
+        
+        curl_setopt_array($curl, array(
+          CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/create-order',
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_ENCODING => '',
+          CURLOPT_MAXREDIRS => 10,
+          CURLOPT_TIMEOUT => 0,
+          CURLOPT_FOLLOWLOCATION => true,
+          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+          CURLOPT_CUSTOMREQUEST => 'POST',
+          CURLOPT_POSTFIELDS =>json_encode($nimbblPayload),
+          CURLOPT_HTTPHEADER => array(
+            'Authorization: Bearer ' . $token_response['token'],
+            'Content-Type: application/json'
+          ),
+        ));
+        
+        $order_response = curl_exec($curl);
+        curl_close($curl);
+
+        $this->logger->debug("Nimbbl: order response: " . $order_response);
+
+        $order_response = json_decode($order_response, true);
+        $order_response['id']=$order_response['order_id'];
+        $order_response['amount']=$order_response['total_amount'];
+
+
+        return $order_response;
+
     }
+
+    // protected function getMerchantPreferences()
+    // {
+    //     try
+    //     {
+    //         $api = new Api($this->config->getKeyId(),"");
+
+    //         $response = $api->request->request("GET", "preferences");
+    //     }
+    //     catch (\Razorpay\Api\Errors\Error $e)
+    //     {
+    //         echo 'Magento Error : ' . $e->getMessage();
+    //     }
+
+    //     $preferences = [];
+
+    //     $preferences['embedded_url'] = Api::getFullUrl("checkout/embedded");
+    //     $preferences['is_hosted'] = false;
+    //     $preferences['image'] = $response['options']['image'];
+
+    //     if(isset($response['options']['redirect']) && $response['options']['redirect'] === true)
+    //     {
+    //         $preferences['is_hosted'] = true;
+    //     }
+
+    //     return $preferences;
+    // }
 
     public function getDiscount()
     {
