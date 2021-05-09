@@ -370,7 +370,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             ],
             "shipping_address"=>[
 
-                "address_1"=>"Some address",
+                // "address_1"=>"Some address",
                 "street"=>implode(',', $payload['billing_details']['street']),
                 // "landmark"=>"My landmark",
                 "area"=>"",
