@@ -356,7 +356,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
         $nimbblPayload = [
 
-            "amount_before_tax"=>$payload['amount']/100,
+            "amount_before_tax"=>$payload['amount'] / 100,
             "currency"=>"INR",
             "invoice_id"=>$payload['receipt'],
             // "device_user_agent"=>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
@@ -380,7 +380,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                 "address_type"=>"residential"
             
             ],
-            "total_amount"=>$payload['amount'],
+            "total_amount"=>$payload['amount'] / 100,
             // "order_line_items"=>[
             //     [
                     
