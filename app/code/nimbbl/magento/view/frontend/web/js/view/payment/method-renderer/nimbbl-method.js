@@ -63,14 +63,14 @@ define(
             initObservable: function() {
                 var self = this._super(); //Resolves UI Error on Checkout
 
-                if (!self.nimbblDataFrameLoaded) {
-                    // $.getScript("https://checkout.razorpay.com/v1/checkout.js", function() {
-                    //     self.nimbblDataFrameLoaded = true;
-                    // });
-                    // $.getScript("https://uatapi.nimbbl.tech/static/assets/js/checkout.js", function() {
-                    //     self.nimbblDataFrameLoaded = true;
-                    // });
-                }
+                // if (!self.nimbblDataFrameLoaded) {
+                // $.getScript("https://checkout.razorpay.com/v1/checkout.js", function() {
+                //     self.nimbblDataFrameLoaded = true;
+                // });
+                // $.getScript("https://uatapi.nimbbl.tech/static/assets/js/checkout.js", function() {
+                //     self.nimbblDataFrameLoaded = true;
+                // });
+                // }
 
                 return self;
             },

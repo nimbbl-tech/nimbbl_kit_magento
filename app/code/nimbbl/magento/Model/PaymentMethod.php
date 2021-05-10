@@ -2,7 +2,7 @@
 
 namespace Nimbbl\Magento\Model;
 
-use Razorpay\Api\Api;
+// use Razorpay\Api\Api;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Sales\Model\Order\Payment\Transaction;
 use Magento\Sales\Model\ResourceModel\Order\Payment\Transaction\CollectionFactory as TransactionCollectionFactory;
@@ -155,11 +155,11 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
         $this->key_id = $this->config->getConfigData(Config::KEY_PUBLIC_KEY);
         $this->key_secret = $this->config->getConfigData(Config::KEY_PRIVATE_KEY);
 
-        $this->rzp = new Api($this->key_id, $this->key_secret);
+        // $this->rzp = new Api($this->key_id, $this->key_secret);
 
         $this->order = $order;
 
-        $this->rzp->setHeader('User-Agent', 'Nimbbl/'. $this->getChannel());
+        // $this->rzp->setHeader('User-Agent', 'Nimbbl/'. $this->getChannel());
     }
 
     /**
@@ -203,7 +203,6 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             $request = $this->getPostData();
 
             $this->_logger->debug("Nimbbl: PaymentMethod authorize invoked with: " . json_encode($request));
-            // [2021-05-10 06:13:04] main.DEBUG: Nimbbl: PaymentMethod authorize invoked with: {"cartId":"8tTfLRsrg8B9LbEnChb0KUKQSYdU9p7z","billingAddress":{"countryId":"IN","regionId":"553","regionCode":"MH","region":"Maharashtra","street":["901 Yash Orion","I B Patel Road","Goregaon East"],"company":"","telephone":"9987027067","postcode":"400064","city":"Mumbai","firstname":"Harish","lastname":"Patel","saveInAddressBook":null},"paymentMethod":{"method":"nimbbl","po_number":null,"additional_data":{"nimbbl_payment_id":"order_8w0yBBNDMkR987Ba-20210510061226","order_id":"14","nimbbl_signature":"426ab65ae105b130b1702f7d125ad9b6589509470553432deeeb87e459fd0c90"}},"email":"harish.rk.patel@gmail.com"} [] []
 
             $isWebhookCall = false;
 
@@ -258,8 +257,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                     ->setShouldCloseParentTransaction(true);
 
             // update the Nimbbl payment with corresponding created order ID of this quote ID
-            // TODO: Figure this out not sure what this is going to be used for...
-            // $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id, $isWebhookCall);
+            $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id, $isWebhookCall);
         }
         catch (\Exception $e)
         {
@@ -298,15 +296,16 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
      */
     protected function updatePaymentNote($paymentId, $order, $nimbblOrderId, $isWebhookCall)
     {
-        //update the Nimbbl payment with corresponding created order ID of this quote ID
-        $this->rzp->payment->fetch($paymentId)->edit(
-            array(
-                'notes' => array(
-                    'merchant_order_id' => $order->getIncrementId(),
-                    'merchant_quote_id' => $order->getQuoteId()
-                )
-            )
-        );
+        // TODO: Figure this out not sure what this is going to be used for...
+        // update the Nimbbl payment with corresponding created order ID of this quote ID
+        // $this->rzp->payment->fetch($paymentId)->edit(
+        //     array(
+        //         'notes' => array(
+        //             'merchant_order_id' => $order->getIncrementId(),
+        //             'merchant_quote_id' => $order->getQuoteId()
+        //         )
+        //     )
+        // );
 
         //update orderLink
         $_objectManager  = \Magento\Framework\App\ObjectManager::getInstance();
@@ -338,28 +337,28 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
     }
 
-    protected function validateSignature($request)
-    {
-        $attributes = array(
-            'nimbbl_payment_id' => $request['paymentMethod']['additional_data']['nimbbl_payment_id'],
-            'nimbbl_order_id'   => $this->order->getOrderId(),
-            'nimbbl_signature'  => $request['paymentMethod']['additional_data']['nimbbl_signature'],
-        );
+    // protected function validateSignature($request)
+    // {
+    //     $attributes = array(
+    //         'nimbbl_payment_id' => $request['paymentMethod']['additional_data']['nimbbl_payment_id'],
+    //         'nimbbl_order_id'   => $this->order->getOrderId(),
+    //         'nimbbl_signature'  => $request['paymentMethod']['additional_data']['nimbbl_signature'],
+    //     );
 
-        $this->rzp->utility->verifyPaymentSignature($attributes);
-    }
+    //     $this->rzp->utility->verifyPaymentSignature($attributes);
+    // }
 
-    /**
-     * [validateWebhookSignature Used in case of webhook request for payment auth]
-     * @param  array  $post
-     * @return [type]
-     */
-    public  function validateWebhookSignature(array $post)
-    {
-        $webhookSecret = $this->config->getWebhookSecret();
+    // /**
+    //  * [validateWebhookSignature Used in case of webhook request for payment auth]
+    //  * @param  array  $post
+    //  * @return [type]
+    //  */
+    // public  function validateWebhookSignature(array $post)
+    // {
+    //     $webhookSecret = $this->config->getWebhookSecret();
 
-        $this->rzp->utility->verifyWebhookSignature(json_encode($post), $_SERVER['HTTP_X_NIMBBL_SIGNATURE'], $webhookSecret);
-    }
+    //     $this->rzp->utility->verifyWebhookSignature(json_encode($post), $_SERVER['HTTP_X_NIMBBL_SIGNATURE'], $webhookSecret);
+    // }
 
     protected function getPostData()
     {
