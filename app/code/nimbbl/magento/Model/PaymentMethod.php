@@ -203,6 +203,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             $request = $this->getPostData();
 
             $this->_logger->debug("Nimbbl: PaymentMethod authorize invoked with: " . json_encode($request));
+            // [2021-05-10 06:13:04] main.DEBUG: Nimbbl: PaymentMethod authorize invoked with: {"cartId":"8tTfLRsrg8B9LbEnChb0KUKQSYdU9p7z","billingAddress":{"countryId":"IN","regionId":"553","regionCode":"MH","region":"Maharashtra","street":["901 Yash Orion","I B Patel Road","Goregaon East"],"company":"","telephone":"9987027067","postcode":"400064","city":"Mumbai","firstname":"Harish","lastname":"Patel","saveInAddressBook":null},"paymentMethod":{"method":"nimbbl","po_number":null,"additional_data":{"nimbbl_payment_id":"order_8w0yBBNDMkR987Ba-20210510061226","order_id":"14","nimbbl_signature":"426ab65ae105b130b1702f7d125ad9b6589509470553432deeeb87e459fd0c90"}},"email":"harish.rk.patel@gmail.com"} [] []
 
             $isWebhookCall = false;
 
@@ -223,7 +224,9 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
                 $isWebhookCall = true;
                 //validate that request is from webhook only
-                $this->validateWebhookSignature($request);
+
+                // TODO: Implement our own webhook signature verification.
+                // $this->validateWebhookSignature($request);
             }
             else
             {
@@ -243,7 +246,8 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                     throw new LocalizedException(__("Cart order amount = %1 doesn't match with amount paid = %2", $order->getOrderCurrency()->formatTxt($order->getGrandTotal()), $rzpOrderAmount));
                 }
 
-                $this->validateSignature($request);
+                // TODO: Implement our own signature verification.
+                // $this->validateSignature($request);
             }
 
             $payment->setStatus(self::STATUS_APPROVED)
@@ -253,8 +257,9 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                     ->setIsTransactionClosed(true)
                     ->setShouldCloseParentTransaction(true);
 
-            //update the Nimbbl payment with corresponding created order ID of this quote ID
-            $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id, $isWebhookCall);
+            // update the Nimbbl payment with corresponding created order ID of this quote ID
+            // TODO: Figure this out not sure what this is going to be used for...
+            // $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id, $isWebhookCall);
         }
         catch (\Exception $e)
         {

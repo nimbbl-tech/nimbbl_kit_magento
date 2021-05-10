@@ -146,9 +146,9 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             return $response;
         }
 
-        if(isset($_POST['nimbbl_payment_id']))
+        if(isset($_POST['nimbbl_payment_id']) || isset($_POST['nimbbl_transaction_id']))
         {
-            $this->logger->debug("Nimbbl: Invoked execute with nimbbl_payment_id already set.");
+            $this->logger->debug("Nimbbl: Invoked execute with nimbbl_transaction_id already set.");
 
             $this->getQuote()->getPayment()->setMethod(PaymentMethod::METHOD_CODE);
 

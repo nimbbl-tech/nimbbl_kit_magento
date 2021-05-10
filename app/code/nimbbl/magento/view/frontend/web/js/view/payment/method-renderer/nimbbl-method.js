@@ -20,7 +20,7 @@ define(
             defaults: {
                 template: 'Nimbbl_Magento/payment/nimbbl-form',
                 nimbblDataFrameLoaded: false,
-                rzp_response: {}
+                nimbbl_response: {}
             },
             getMerchantName: function() {
                 return window.checkoutConfig.payment.nimbbl.merchant_name;
@@ -307,7 +307,7 @@ define(
                 //     name: self.getMerchantName(),
                 //     amount: data.amount,
                 //     handler: function(data) {
-                //         self.rzp_response = data;
+                //         self.nimbbl_response = data;
                 //         self.checkNimbblOrder(data);
                 //     },
                 //     order_id: data.rzp_order,
@@ -342,11 +342,22 @@ define(
                 var options = {
                     "access_key": self.getKeyId(), // Enter the Key ID generated from the Dashboard
                     "order_id": data.nimbbl_order,
-                    // "callback_url": "https://uatshop.nimbbl.tech/api/callback",
+                    // "callback_url": url.build('nimbbl/payment/order'),
                     // "redirect": false,
                     "callback_handler": function(response) {
                         console.log('Merchant callback_handler invoked.');
                         console.log(response);
+                        if (response.status === 'failed') {
+                            self.isPaymentProcessing.reject("Payment Closed: " + response.reason);
+                        } else {
+
+                            data['nimbbl_transaction_id'] = response.nimbbl_transaction_id;
+                            data['nimbbl_signature'] = response.nimbbl_signature;
+
+                            self.nimbbl_response = data;
+                            self.checkNimbblOrder(data);
+                        }
+
                         // let response_payload = {
                         //     "payload": response
                         // }
@@ -370,9 +381,9 @@ define(
                     "method": this.item.method,
                     "po_number": null,
                     "additional_data": {
-                        rzp_payment_id: this.rzp_response.nimbbl_payment_id,
+                        nimbbl_payment_id: this.nimbbl_response.nimbbl_transaction_id,
                         order_id: this.merchant_order_id,
-                        rzp_signature: this.rzp_response.nimbbl_signature
+                        nimbbl_signature: this.nimbbl_response.nimbbl_signature
                     }
                 };
             }
