@@ -109,16 +109,16 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
     public function execute()
     {       
         $post = $this->getPostData(); 
-
+        $this->logger->info("Nimbbl Webhook processing started.");
+        
         if (json_last_error() !== 0)
         {
             return;
         }
 
-        $this->logger->info("Nimbbl Webhook processing started.");
+        
        
-        if (($this->config->isWebhookEnabled() === true) && 
-            (empty($post['event']) === false))
+        if (($this->config->isWebhookEnabled() === true))
         { 
             if (isset($_SERVER['HTTP_X_NIMBBL_SIGNATURE']) === true)
             {
