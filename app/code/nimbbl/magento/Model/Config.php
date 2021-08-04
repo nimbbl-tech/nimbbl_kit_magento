@@ -61,7 +61,7 @@ class Config
 
     public function getWebhookSecret()
     {
-        return $this->getConfigData(self::WEBHOOK_SECRET);
+        return $this->getConfigData(self::KEY_PRIVATE_KEY);
     }
     
     public function getPaymentAction()
