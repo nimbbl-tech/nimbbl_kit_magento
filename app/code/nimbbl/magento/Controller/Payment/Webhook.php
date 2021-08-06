@@ -2,7 +2,7 @@
 
 namespace Nimbbl\Magento\Controller\Payment;
 
-// use Razorpay\Api\Api;
+use Nimbbl\Api\NimbblApi;
 // use Razorpay\Api\Errors;
 use Nimbbl\Magento\Model\Config;
 use Nimbbl\Magento\Model\PaymentMethod;
@@ -89,7 +89,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         $keyId                 = $this->config->getConfigData(Config::KEY_PUBLIC_KEY);
         $keySecret             = $this->config->getConfigData(Config::KEY_PRIVATE_KEY);
 
-        $this->api             = new Api($keyId, $keySecret);
+        $this->api             = new NimbblApi($keyId, $keySecret);
         $this->order           = $order;
         $this->logger          = $logger;
 

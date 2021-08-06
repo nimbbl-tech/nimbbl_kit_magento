@@ -5,3 +5,4 @@
     'Nimbbl_Magento',
     __DIR__
 );
+require_once __DIR__ . '/nimbbl-sdk/Nimbbl.php';
