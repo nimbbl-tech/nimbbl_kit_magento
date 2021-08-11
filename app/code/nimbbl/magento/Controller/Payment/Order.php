@@ -2,9 +2,10 @@
 
 namespace Nimbbl\Magento\Controller\Payment;
 
-// use Razorpay\Api\Api;
+use Nimbbl\Api\NimbblApi;
 use Nimbbl\Magento\Model\PaymentMethod;
 use Magento\Framework\Controller\ResultFactory;
+use Magento\Catalog\Api\ProductRepositoryInterface;
 
 class Order extends \Nimbbl\Magento\Controller\BaseController
 {
@@ -20,6 +21,10 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
     protected $logger;
 
+    protected $productFactory;
+
+    protected $imageHelper;
+
     /**
      * @param \Magento\Framework\App\Action\Context $context
      * @param \Magento\Customer\Model\Session $customerSession
@@ -28,6 +33,8 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
      * @param \Magento\Framework\App\CacheInterface $cache
      * @param \Magento\Sales\Api\OrderRepositoryInterface $orderRepository
      * @param \Psr\Log\LoggerInterface $logger
+     * @param \Magento\Catalog\Model\ProductFactory $productFactory
+     * @param \Magento\Catalog\Helper\Image $imageHelper
      */
     public function __construct(
         \Magento\Framework\App\Action\Context $context,
@@ -38,7 +45,9 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         \Nimbbl\Magento\Model\CheckoutFactory $checkoutFactory,
         \Magento\Framework\App\CacheInterface $cache,
         \Magento\Sales\Api\OrderRepositoryInterface $orderRepository,
-        \Psr\Log\LoggerInterface $logger
+        \Psr\Log\LoggerInterface $logger,
+        \Magento\Catalog\Model\ProductFactory $productFactory,
+        \Magento\Catalog\Helper\Image $imageHelper
     ) {
         parent::__construct(
             $context,
@@ -54,7 +63,9 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         $this->cache = $cache;
         $this->orderRepository = $orderRepository;
         $this->logger          = $logger;
-
+        $this->productFactory = $productFactory;
+        $this->imageHelper = $imageHelper;
+        
         $this->objectManagement   = \Magento\Framework\App\ObjectManager::getInstance();
     }
 
@@ -215,10 +226,11 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                         'app_offer' => ($this->getDiscount() > 0) ? 1 : 0,
                         'billing_details' => json_decode($_POST['billing_address'], true),
                         'email' => $_POST['email'],
+                        'items' => $this->getQuote()-> getAllItems(),
                     ];
                     $this->logger->debug("Nimbbl: Creating order in RP with: " . json_encode($payload));
 
-                    // $order = $this->rzp->order->create($payload);
+                    // $order = $this->nimbbl->order->create($payload);
 
                     $order = $this->createOrder($payload);
 
@@ -319,43 +331,41 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
     protected function createOrder($payload)
     {
-        $this->logger->debug("Nimbbl: Invoking Nimbbl CreateOrder API with payload: " . json_encode($payload));
+        $this->logger->debug("Nimbbl: Invoking Nimbbl Nimbbl php sdk with payload: " . json_encode($payload));
         // [2021-05-09 21:00:52] main.DEBUG: Nimbbl: Invoking Nimbbl CreateOrder API with payload: {"amount":10000,"receipt":"11","currency":"USD","payment_capture":1,"app_offer":0,"billing_details":{"countryId":"IN","regionId":"553","regionCode":"MH","region":"Maharashtra","street":["901 Yash Orion","I B Patel Road","Goregaon East"],"company":"","telephone":"9987027067","postcode":"400091","city":"Mumbai","firstname":"Harish","lastname":"Patel","saveInAddressBook":null}} [] []
+        $arg_order_item_data = array();
+        foreach ($payload['items'] as $item_id => $item) {
+            // $product = $this->productFactory->load($item->getProduct()->getId());
+            $product_id = $item->getProduct()->getId();
+            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+            $orderproduct = $objectManager->create('Magento\Catalog\Model\Product')->load($product_id);
+            $url = $this->imageHelper->init($orderproduct, 'product_thumbnail_image')->getUrl();
+            $product = array(
+                // $product_id    = $item['product_id']; // Get the product ID
+                // $variation_id  = $item['variation_id']; // Get the variation ID
+                "title" => $item['name'], // The product name
+                "quantity" => $item->getQtyOrdered(),
+                'uom' => '',
+                'image_url' => $url,
+                'description' => $item->getDescription(),
+                'sku_id' => $item->get_sku(),
 
-        // First create the token.
-        $curl = curl_init();
+                // Get line item totals (non discounted)
+                // $line_total     = $item['subtotal']; // or $item['line_subtotal'] -- The line item non discounted total
+                // $line_total_tax = $item['subtotal_tax']; // or $item['line_subtotal_tax'] -- The line item non discounted tax total
 
-        curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/generate-token',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_POSTFIELDS =>'{
-            "access_key": "'.$this->key_id.'",
-            "access_secret": "'.$this->key_secret.'"
+                // Get line item totals (discounted)
+                // 'rate' => $wc_product->get_sale_price(),
+                'amount_before_tax' => $item['row_total'] - $item['tax_amount'],
+                'tax' => $item['tax_amount'],
+                "total_amount" => $item['row_total'], // or $item['line_total'] -- The line item non discounted total
+                // $line_total_tax2 = $item['total_tax']; // The line item non discounted tax total
+
+            );
+
+            array_push($arg_order_item_data, $product);
         }
-        ',
-        CURLOPT_HTTPHEADER => array(
-            'Content-Type: application/json'
-        ),
-        ));
-
-        $token_response = curl_exec($curl);
-        curl_close($curl);
-
-        $this->logger->debug("Nimbbl: token response: " . $token_response);
-
-        $token_response = json_decode($token_response, true);
-
-        // Now create the actual order.
-        $curl = curl_init();
-
         $nimbblPayload = [
-
             "amount_before_tax"=>$payload['amount'] / 100,
             "currency"=>"INR",
             "invoice_id"=>$payload['receipt'],
@@ -369,7 +379,6 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                 "last_name"=>$payload['billing_details']['lastname']
             ],
             "shipping_address"=>[
-
                 // "address_1"=>"Some address",
                 "street"=>implode(',', $payload['billing_details']['street']),
                 // "landmark"=>"My landmark",
@@ -381,6 +390,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             
             ],
             "total_amount"=>$payload['amount'] / 100,
+            "order_line_items" => $arg_order_item_data,
             // "order_line_items"=>[
             //     [
                     
@@ -397,28 +407,11 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             // ]
         ];
         
-        curl_setopt_array($curl, array(
-          CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/create-order',
-          CURLOPT_RETURNTRANSFER => true,
-          CURLOPT_ENCODING => '',
-          CURLOPT_MAXREDIRS => 10,
-          CURLOPT_TIMEOUT => 0,
-          CURLOPT_FOLLOWLOCATION => true,
-          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-          CURLOPT_CUSTOMREQUEST => 'POST',
-          CURLOPT_POSTFIELDS =>json_encode($nimbblPayload),
-          CURLOPT_HTTPHEADER => array(
-            'Authorization: Bearer ' . $token_response['token'],
-            'Content-Type: application/json'
-          ),
-        ));
-        
-        $order_response = curl_exec($curl);
-        curl_close($curl);
+        $order_response = $this->nimbbl->order->create($nimbblPayload);
 
-        $this->logger->debug("Nimbbl: order response: " . $order_response);
+        $this->logger->debug("Nimbbl: order response: " . json_encode($order_response->attributes));
 
-        $order_response = json_decode($order_response, true);
+        $order_response = $order_response->attributes;
         $order_response['id']=$order_response['order_id'];
         $order_response['amount']=$order_response['total_amount'];
 

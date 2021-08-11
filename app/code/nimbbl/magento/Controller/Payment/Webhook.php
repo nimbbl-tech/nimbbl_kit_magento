@@ -11,7 +11,7 @@ use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\DataObject;
 
-class Webhook extends \Nimbbl\Magento\Controller\BaseController
+class Webhook extends \Nimbbl\Magento\Controller\BaseController implements CsrfAwareActionInterface
 {
     /**
      * @var \Magento\Checkout\Model\Session
@@ -108,22 +108,25 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
      */
     public function execute()
     {       
-        $post = $this->getPostData(); 
-        $this->logger->info("Nimbbl Webhook processing started.");
+        // $post = $this->getPostData(); 
+        $post = file_get_contents("php://input");
+			//$logger = wc_get_logger();
+        $webhook_data = json_decode($post, true);
+
+        // $order = wc_get_order($webhook_data['order']['invoice_id']);
+        $this->logger->info("Nimbbl Webhook processing started." . $webhook_data['nimbbl_signature']);
         
         if (json_last_error() !== 0)
         {
             return;
-        }
-
-        
-       
-        if (($this->config->isWebhookEnabled() === true))
+        }   
+        if (($this->config->isWebhookEnabled() != 0))
         { 
-            if (isset($_SERVER['HTTP_X_NIMBBL_SIGNATURE']) === true)
+            if (isset($webhook_data['nimbbl_signature']))
             {
                 $webhookSecret = $this->config->getWebhookSecret();
-
+                
+                $this->logger->info("Nimbbl Webhook Secret." . json_encode($webhookSecret));
                 //
                 // To accept webhooks, the merchant must configure 
                 // it on the magento backend by setting the secret
@@ -133,34 +136,16 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
                     return;
                 }
 
-                try
-                { 
-                    $this->rzp->utility->verifyWebhookSignature(json_encode($post), $_SERVER['HTTP_X_NIMBBL_SIGNATURE'], $webhookSecret);
-                }
-                catch (Errors\SignatureVerificationError $e)
-                {
-                    $this->logger->warning(
-                        $e->getMessage(), 
-                        [
-                            'data'  => $post,
-                            'event' => 'nimbbl.magento.signature.verify_failed'
-                        ]);
-
-                    //Set the validation error in response
-                    header('Status: 400 Signature Verification failed', true, 400);    
-                    exit;
-                }
-
-                switch ($post['event'])
-                {
-                    case 'payment.authorized':
-                        return;
-
-                    case 'order.paid':
-                        return $this->orderPaid($post);    
-
-                    default:
-                        return;
+                
+                $verified = $this->api->util->verifyPaymentSignature([
+                    'nimbbl_signature' => $webhook_data['nimbbl_signature'],
+                    'nimbbl_transaction_id' => $webhook_data['nimbbl_transaction_id'],
+                    'merchant_order_id' => $webhook_data['order']['invoice_id'],
+                ]);
+                // $this->api->utility->verifyWebhookSignature(json_encode($post), $webhook_data['nimbbl_signature'], $webhookSecret);
+                
+                if($verified){
+                    return $this->orderPaid($webhook_data);
                 }
             }
         }
@@ -175,22 +160,22 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
      */
     protected function orderPaid(array $post)
     {
-        $paymentId = $post['payload']['payment']['entity']['id'];
-        $rzpOrderId = $post['payload']['order']['entity']['id'];
+        $paymentId = $post['nimbbl_transaction_id'];
+        $nimbbl_order_id = $post['nimbbl_order_id'];
 
-        if (isset($post['payload']['payment']['entity']['notes']['merchant_quote_id']) === false)
+        if (isset($post['order']['invoice_id']) === false)
         {
             $this->logger->info("Nimbbl Webhook: Quote ID not set for Nimbbl payment_id(:$paymentId)");
             return;
         }
 
-        $quoteId   = $post['payload']['payment']['entity']['notes']['merchant_quote_id'];
+        $quoteId   = $post['order']['invoice_id'];
 
 
         $orderLinkCollection = $this->_objectManager->get('Nimbbl\Magento\Model\OrderLink')
                                                    ->getCollection()
                                                    ->addFilter('quote_id', $quoteId)
-                                                   ->addFilter('nimbbl_order_id', $rzpOrderId)
+                                                   ->addFilter('nimbbl_order_id', $nimbbl_order_id)
                                                    ->getFirstItem();
 
         $orderLink = $orderLinkCollection->getData();
@@ -220,7 +205,6 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             {
                 $this->logger->info("Nimbbl Webhook: Order processing is active for quoteID: $quoteId and Nimbbl payment_id(:$paymentId)");
                 header('Status: 409 Conflict, too early for processing', true, 409);
-
                 exit;
             }
 
@@ -245,11 +229,11 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             exit;
         }
 
-        $amount    = number_format($post['payload']['payment']['entity']['amount']/100, 2, ".", "");
+        $amount    = number_format($post['order']['total_amount'], 0, ".", "");
 
-        $this->logger->info("Nimbbl Webhook processing started for Nimbbl payment_id(:$paymentId)");
+        $this->logger->info("Nimbbl Webhook processing started for Nimbbl payment_id(:$amount)");
 
-        $payment_created_time = $post['payload']['payment']['entity']['created_at'];
+        $payment_created_time = $post['order']['order_date'];
 
         //validate if the quote Order is still active
         $quote = $this->quoteRepository->get($quoteId);
@@ -263,9 +247,10 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         }
 
         //validate amount before placing order
-        $quoteAmount = (int) (number_format($quote->getGrandTotal() * 100, 0, ".", ""));
+        $quoteAmount = (int) (number_format($quote->getGrandTotal(), 0, ".", ""));
+        $this->logger->info("Nimbbl Webhook: Amount paid doesn't match with store order amount for Nimbbl payment_id(:$quoteAmount)");
 
-        if ($quoteAmount !== $post['payload']['payment']['entity']['amount'])
+        if ($quoteAmount != $amount)
         {
             $this->logger->info("Nimbbl Webhook: Amount paid doesn't match with store order amount for Nimbbl payment_id(:$paymentId)");
 
@@ -319,7 +304,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         $orderLinkCollection = $this->_objectManager->get('Nimbbl\Magento\Model\OrderLink')
                                                    ->getCollection()
                                                    ->addFilter('quote_id', $quoteId)
-                                                   ->addFilter('nimbbl_order_id', $rzpOrderId)
+                                                   ->addFilter('nimbbl_order_id', $nimbbl_order_id)
                                                    ->getFirstItem();
 
         $orderLink = $orderLinkCollection->getData();
@@ -358,10 +343,10 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
 
         //dispatch the "nimbbl_webhook_order_placed_after" event
         $eventData = [
-                        'raorpay_payment_id' => $paymentId,
+                        'nimbbl_payment_id' => $paymentId,
                         'magento_quote_id' => $quoteId,
                         'magento_order_id' => $order->getEntityId(),
-                        'amount_captured' => $post['payload']['payment']['entity']['amount']
+                        'amount_captured' => $post['order']['total_amount']
                      ];
 
         $transport = new DataObject($eventData);
@@ -440,5 +425,14 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         $request = file_get_contents('php://input');
 
         return json_decode($request, true);
+    }
+    public function createCsrfValidationException(RequestInterface $request): ?InvalidRequestException
+    {
+        return null;
+    }
+
+    public function validateForCsrf(RequestInterface $request): ?bool
+    {
+        return true;
     }
 }

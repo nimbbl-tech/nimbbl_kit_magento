@@ -2,7 +2,7 @@
 
 namespace Nimbbl\Magento\Controller;
 
-// use Razorpay\Api\Api;
+use Nimbbl\Api\NimbblApi;
 use Nimbbl\Magento\Model\Config;
 use Magento\Framework\App\RequestInterface;
 
@@ -56,7 +56,7 @@ abstract class BaseController extends \Magento\Framework\App\Action\Action
         $this->key_id = $this->config->getConfigData(Config::KEY_PUBLIC_KEY);
         $this->key_secret = $this->config->getConfigData(Config::KEY_PRIVATE_KEY);
 
-        // $this->rzp = new Api($this->key_id, $this->key_secret);
+        $this->nimbbl = new NimbblApi($this->key_id, $this->key_secret);
     }
 
     /**
