@@ -226,9 +226,9 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                         'app_offer' => ($this->getDiscount() > 0) ? 1 : 0,
                         'billing_details' => json_decode($_POST['billing_address'], true),
                         'email' => $_POST['email'],
-                        'items' => $this->getQuote()-> getAllItems(),
+                        'items' => $this->getQuote()->getAllVisibleItems(),
                     ];
-                    $this->logger->debug("Nimbbl: Creating order in RP with: " . json_encode($payload));
+                    $this->logger->debug("Nimbbl: Creating order in NB with: " . json_encode($payload));
 
                     // $order = $this->nimbbl->order->create($payload);
 
@@ -241,7 +241,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
                     if (null !== $order && !empty($order['id']))
                     {
-                        $this->logger->debug("Nimbbl: Order creation in RP done.");
+                        $this->logger->debug("Nimbbl: Order creation in NB done.");
                         $is_hosted = false;
 
                         // $merchantPreferences    = $this->getMerchantPreferences();
@@ -289,6 +289,12 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                                       ->save();
                         }
 
+                    }else{
+                        $code = 400;
+                        $responseContent = [
+                            'message'   => $order['message'],
+                            'parameters' => []
+                        ];
                     }
                 }
                 catch(\Razorpay\Api\Errors\Error $e)
@@ -344,7 +350,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                 // $product_id    = $item['product_id']; // Get the product ID
                 // $variation_id  = $item['variation_id']; // Get the variation ID
                 "title" => $item['name'], // The product name
-                "quantity" => $item->getQtyOrdered(),
+                "quantity" => $item['qty'],
                 'uom' => '',
                 'image_url' => $url,
                 'description' => $item->getDescription(),
@@ -409,14 +415,18 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         
         $order_response = $this->nimbbl->order->create($nimbblPayload);
 
-        $this->logger->debug("Nimbbl: order response: " . json_encode($order_response->attributes));
+        if(property_exists($order_response,"error") && !empty($order_response->error)){
+            $this->logger->debug("Nimbbl: order response: " . json_encode($order_response->error));
+            $order_response = $order_response->error;
+            return $order_response;
+        }else{
+            $this->logger->debug("Nimbbl: order response: " . json_encode($order_response->attributes));
 
-        $order_response = $order_response->attributes;
-        $order_response['id']=$order_response['order_id'];
-        $order_response['amount']=$order_response['total_amount'];
-
-
-        return $order_response;
+            $order_response = $order_response->attributes;
+            $order_response['id']=$order_response['order_id'];
+            $order_response['amount']=$order_response['total_amount'];
+            return $order_response;
+        }
 
     }
 

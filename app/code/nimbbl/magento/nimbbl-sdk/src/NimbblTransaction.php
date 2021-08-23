@@ -71,7 +71,7 @@ class NimbblTransaction extends NimbblEntity implements JsonSerializable
         $response = $nimbblRequest->universalRequest('POST', 'v2/transaction-enquiry', $attributes);
         $newResponse = new NimbblTransaction();
         if (key_exists('error', $response)) {
-            $newResponse->error = $createdEntity['error'];
+            $newResponse->error = $response['error'];
         }
         else {
             $nimbblSegment->track(array(
