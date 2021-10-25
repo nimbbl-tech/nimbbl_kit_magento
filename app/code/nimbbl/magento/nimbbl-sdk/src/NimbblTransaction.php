@@ -2,6 +2,7 @@
 
 namespace Nimbbl\Api;
 
+use Exception;
 use JsonSerializable;
 
 class NimbblTransaction extends NimbblEntity implements JsonSerializable
@@ -99,15 +100,20 @@ class NimbblTransaction extends NimbblEntity implements JsonSerializable
     {
         $nimbblRequest = new NimbblRequest();
         $manyEntities = $nimbblRequest->request('GET', 'v2/order/fetch-transactions/' . $id);
-
-        $transactions = array();
-        foreach ($manyEntities['transactions'] as $idx => $oneEntity) {
-            $transactions[] = $this->fillOne($oneEntity);
+        
+        $newResponse = new NimbblTransaction();
+        if (key_exists('error', $manyEntities)) {
+            $newResponse->error = $manyEntities['error'];
+        }
+        else{
+            $transactions = array();
+            foreach ($manyEntities['transactions'] as $idx => $oneEntity) {
+                $transactions[] = $this->fillOne($oneEntity);
+            }
+            $newResponse->items = $transactions;
         }
 
-        return [
-            'items' => $transactions
-        ];
+        return $newResponse;
     }
     
 }
