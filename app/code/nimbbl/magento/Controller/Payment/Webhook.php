@@ -113,6 +113,10 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController implements CsrfA
 			//$logger = wc_get_logger();
         $webhook_data = json_decode($post, true);
 
+        $orderId = $webhook_data['order']['invoice_id'];
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $order = $objectManager->create('\Magento\Sales\Model\OrderRepository')->get($orderId);
+
         // $order = wc_get_order($webhook_data['order']['invoice_id']);
         $this->logger->info("Nimbbl Webhook processing started." . $webhook_data['nimbbl_signature']);
         
@@ -140,7 +144,9 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController implements CsrfA
                 $verified = $this->api->util->verifyPaymentSignature([
                     'nimbbl_signature' => $webhook_data['nimbbl_signature'],
                     'nimbbl_transaction_id' => $webhook_data['nimbbl_transaction_id'],
-                    'merchant_order_id' => $webhook_data['order']['invoice_id'],
+                    'merchant_order_id' => $order->getEntityId(),
+                    'order_currency' => $order->getOrderCurrencyCode(),
+					'order_amount' => $order->getGrandTotal()
                 ]);
                 // $this->api->utility->verifyWebhookSignature(json_encode($post), $webhook_data['nimbbl_signature'], $webhookSecret);
                 
