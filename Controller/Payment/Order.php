@@ -232,6 +232,13 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
                     // $order = $this->nimbbl->order->create($payload);
 
+                    $orderId = $this->nimbbl->order->getOrderIdByInvoiceId($receipt_id);
+                    $orderCheckRes = $this->nimbbl->order->retrieveOne($orderId);
+
+                    if(count($orderCheckRes->error) === 0){
+                        return $orderCheckRes->attributes;
+                    }
+
                     $order = $this->createOrder($payload);
 
                     $responseContent = [
