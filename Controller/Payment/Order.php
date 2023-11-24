@@ -232,6 +232,42 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
                     // $order = $this->nimbbl->order->create($payload);
 
+                    $orderRes = $this->nimbbl->order->getOrderByInvoiceId($receipt_id);
+                    if(count($orderRes) !== 0){
+                        $orderId = $orderRes['order_id'];
+                        $orderCheckRes = $this->nimbbl->order->retrieveOne($orderId);
+                        if(count($orderCheckRes->error) === 0){
+                            $order = $orderCheckRes->attributes;
+
+                            $this->logger->debug("Nimbbl: Order already exists ".$order);
+
+                            $responseContent = [
+                                'success'           => true,
+                                'nimbbl_order'      => $order['order_id'],
+                                'order_id'          => $receipt_id,
+                                'amount'            => $order['total_amount'],
+                                'quote_currency'    => $this->getQuote()->getQuoteCurrencyCode(),
+                                'quote_amount'      => number_format($this->getQuote()->getGrandTotal(), 2, ".", ""),
+                                'maze_version'      => $maze_version,
+                                'module_version'    => $module_version,
+                                // 'is_hosted'         => $merchantPreferences['is_hosted'],
+                                // 'image'             => $merchantPreferences['image'],
+                                // 'embedded_url'      => $merchantPreferences['embedded_url'],
+                                'is_hosted'         => false,
+                                'image'             => '',
+                                'embedded_url'      => '',
+                            ];
+
+                            $code=200;
+
+                            $response = $this->resultFactory->create(ResultFactory::TYPE_JSON);
+                            $response->setData($responseContent);
+                            $response->setHttpResponseCode($code);
+
+                            return $response;
+                        }
+                    }
+
                     $order = $this->createOrder($payload);
 
                     $responseContent = [
