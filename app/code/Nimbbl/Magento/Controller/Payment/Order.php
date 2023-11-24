@@ -218,7 +218,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                             if (!isset($orderCheckRes->error)) {
                                 $order = $orderCheckRes->attributes;
 
-                                $this->logger->debug("Nimbbl: Order already exists " . $order);
+                                $this->logger->debug("Nimbbl: Order already exists " . json_encode($order));
 
                                 $responseContent = [
                                     'success' => true,
