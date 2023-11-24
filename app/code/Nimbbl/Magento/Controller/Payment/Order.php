@@ -215,7 +215,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                         if (!isset($orderRes['error'])) {
                             $orderId = $orderRes['order_id'];
                             $orderCheckRes = $this->nimbbl->order->retrieveOne($orderId);
-                            if (count($orderCheckRes->error) === 0) {
+                            if (!isset($orderCheckRes->error)) {
                                 $order = $orderCheckRes->attributes;
 
                                 $this->logger->debug("Nimbbl: Order already exists " . $order);
