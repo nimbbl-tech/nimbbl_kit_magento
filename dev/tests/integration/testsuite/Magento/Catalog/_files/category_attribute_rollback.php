@@ -4,22 +4,15 @@
  * See COPYING.txt for license details.
  */
 
-/** @var Registry $registry */
-
-use Magento\Catalog\Model\Category\AttributeFactory;
-use Magento\Framework\Registry;
-use Magento\TestFramework\Helper\Bootstrap;
-
-$objectManager = Bootstrap::getObjectManager();
-/** @var Registry $registry */
-$registry = $objectManager->get(Registry::class);
+/** @var \Magento\Framework\Registry $registry */
+$registry = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(\Magento\Framework\Registry::class);
 
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', true);
 
-/** @var AttributeFactory $attributeFactory */
-$attributeFactory = $objectManager->get(AttributeFactory::class);
-$attribute = $attributeFactory->create();
+/** @var \Magento\Catalog\Model\ResourceModel\Eav\Attribute $attribute */
+$attribute = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
+    ->create(\Magento\Catalog\Model\ResourceModel\Eav\Attribute::class);
 
 $attribute->loadByCode(3, 'test_attribute_code_666');
 

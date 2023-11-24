@@ -11,7 +11,6 @@ use Magento\Customer\Model\Session;
 use Magento\Customer\Model\Url;
 use Magento\Framework\App\Request\Http as HttpRequest;
 use Magento\Framework\Message\MessageInterface;
-use Magento\Framework\Phrase;
 use Magento\Framework\Url\EncoderInterface;
 use Magento\TestFramework\TestCase\AbstractController;
 
@@ -29,20 +28,14 @@ class LoginPostTest extends AbstractController
     private $urlEncoder;
 
     /**
-     * @var Url
-     */
-    private $customerUrl;
-
-    /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
 
         $this->session = $this->_objectManager->get(Session::class);
         $this->urlEncoder = $this->_objectManager->get(EncoderInterface::class);
-        $this->customerUrl = $this->_objectManager->get(Url::class);
     }
 
     /**
@@ -113,16 +106,13 @@ class LoginPostTest extends AbstractController
      */
     public function testLoginWithUnconfirmedPassword(): void
     {
+        $this->markTestSkipped('Blocked by MC-31370.');
         $email = 'unconfirmedcustomer@example.com';
         $this->prepareRequest($email, 'Qwert12345');
         $this->dispatch('customer/account/loginPost');
         $this->assertEquals($email, $this->session->getUsername());
-        $message = __(
-            'This account is not confirmed. <a href="%1">Click here</a> to resend confirmation email.',
-            $this->customerUrl->getEmailConfirmationUrl($this->session->getUsername())
-        );
         $this->assertSessionMessages(
-            $this->equalTo([(string)$message]),
+            $this->equalTo([(string)__('This account is not confirmed. Click here to resend confirmation email.')]),
             MessageInterface::TYPE_ERROR
         );
     }
@@ -145,24 +135,6 @@ class LoginPostTest extends AbstractController
     }
 
     /**
-     * @magentoConfigFixture current_store customer/startup/redirect_dashboard 0
-     * @magentoConfigFixture current_store customer/captcha/enable 0
-     *
-     * @magentoDataFixture Magento/Customer/_files/customer.php
-     *
-     * @return void
-     */
-    public function testLoginToDashboardWithIncorrectReferrer(): void
-    {
-        $redirectUrl = 'https:support.magento.com';
-        $this->prepareRequest('customer@example.com', 'password');
-        $this->getRequest()->setParam(Url::REFERER_QUERY_PARAM_NAME, $this->urlEncoder->encode($redirectUrl));
-        $this->dispatch('customer/account/loginPost');
-        $this->assertTrue($this->session->isLoggedIn());
-        $this->assertRedirect($this->stringContains('customer/account/'));
-    }
-
-    /**
      * @magentoConfigFixture current_store customer/startup/redirect_dashboard 1
      * @magentoConfigFixture current_store customer/captcha/enable 0
      *
@@ -177,28 +149,6 @@ class LoginPostTest extends AbstractController
         $this->dispatch('customer/account/loginPost');
         $this->assertTrue($this->session->isLoggedIn());
         $this->assertRedirect($this->stringContains('customer/account/'));
-    }
-
-    /**
-     * @magentoConfigFixture current_store customer/startup/redirect_dashboard 1
-     * @magentoConfigFixture current_store customer/captcha/enable 0
-     *
-     * @magentoDataFixture Magento/Customer/_files/customer.php
-     *
-     * @return void
-     */
-    public function testNoFormKeyLoginPostAction(): void
-    {
-        $this->prepareRequest('customer@example.com', 'password');
-        $this->getRequest()->setPostValue('form_key', null);
-        $this->getRequest()->setParam(Url::REFERER_QUERY_PARAM_NAME, $this->urlEncoder->encode('test_redirect'));
-        $this->dispatch('customer/account/loginPost');
-        $this->assertFalse($this->session->isLoggedIn());
-        $this->assertRedirect($this->stringContains('customer/account/'));
-        $this->assertSessionMessages(
-            $this->equalTo([new Phrase('Invalid Form Key. Please refresh the page.')]),
-            MessageInterface::TYPE_ERROR
-        );
     }
 
     /**

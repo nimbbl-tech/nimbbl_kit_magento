@@ -26,7 +26,7 @@ class GraphQlConfigTest extends \PHPUnit\Framework\TestCase
    /** @var \Magento\Framework\GraphQl\Config  */
     private $model;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         /** @var ObjectManagerInterface $objectManager */
         $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
@@ -36,24 +36,20 @@ class GraphQlConfigTest extends \PHPUnit\Framework\TestCase
         $fileResolverMock = $this->getMockBuilder(
             \Magento\Framework\Config\FileResolverInterface::class
         )->disableOriginalConstructor()->getMock();
-        $filePath1 = __DIR__ . '/_files/schemaC.graphqls';
-        $filePath2 = __DIR__ . '/_files/schemaD.graphqls';
         $fileList = [
-            $filePath1 => file_get_contents($filePath1),
-            $filePath2 => file_get_contents($filePath2)
+            file_get_contents(__DIR__ . '/_files/schemaC.graphqls'),
+            file_get_contents(__DIR__ . '/_files/schemaD.graphqls')
         ];
-        $fileResolverMock->expects($this->any())->method('get')->willReturn($fileList);
+        $fileResolverMock->expects($this->any())->method('get')->will($this->returnValue($fileList));
         $graphQlReader = $objectManager->create(
             \Magento\Framework\GraphQlSchemaStitching\GraphQlReader::class,
             ['fileResolver' => $fileResolverMock]
         );
         $reader = $objectManager->create(
-            // phpstan:ignore
             \Magento\Framework\GraphQlSchemaStitching\Reader::class,
             ['readers' => ['graphql_reader' => $graphQlReader]]
         );
         $data = $objectManager->create(
-            // phpstan:ignore
             \Magento\Framework\GraphQl\Config\Data ::class,
             ['reader' => $reader]
         );
@@ -235,7 +231,7 @@ class GraphQlConfigTest extends \PHPUnit\Framework\TestCase
     /**
      * {@inheritdoc}
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
         /** @var ObjectManagerInterface $objectManager */
         $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();

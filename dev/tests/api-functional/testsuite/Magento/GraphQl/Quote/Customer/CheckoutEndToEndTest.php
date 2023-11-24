@@ -13,7 +13,6 @@ use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Framework\Registry;
 use Magento\Quote\Model\ResourceModel\Quote\CollectionFactory as QuoteCollectionFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Model\OrderFactory;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
@@ -59,30 +58,22 @@ class CheckoutEndToEndTest extends GraphQlAbstract
     private $orderRepository;
 
     /**
-     * @var OrderFactory
-     */
-    private $orderFactory;
-
-    /**
      * @var array
      */
     private $headers = [];
 
-    /**
-     * @inheritdoc
-     */
-    protected function setUp(): void
+    protected function setUp()
     {
-        $objectManager = Bootstrap::getObjectManager();
+        parent::setUp();
 
+        $objectManager = Bootstrap::getObjectManager();
         $this->registry = $objectManager->get(Registry::class);
         $this->quoteCollectionFactory = $objectManager->get(QuoteCollectionFactory::class);
         $this->quoteResource = $objectManager->get(QuoteResource::class);
         $this->quoteIdMaskFactory = $objectManager->get(QuoteIdMaskFactory::class);
-        $this->customerRepository = $objectManager->get(CustomerRepositoryInterface::class);
+        $this->customerRepository = Bootstrap::getObjectManager()->get(CustomerRepositoryInterface::class);
         $this->orderCollectionFactory = $objectManager->get(CollectionFactory::class);
         $this->orderRepository = $objectManager->get(OrderRepositoryInterface::class);
-        $this->orderFactory = $objectManager->get(OrderFactory::class);
     }
 
     /**
@@ -106,13 +97,8 @@ class CheckoutEndToEndTest extends GraphQlAbstract
         $paymentMethod = $this->setShippingMethod($cartId, $shippingMethod);
         $this->setPaymentMethod($cartId, $paymentMethod);
 
-        $orderIncrementId = $this->placeOrder($cartId);
-
-        $order = $this->orderFactory->create();
-        $order->loadByIncrementId($orderIncrementId);
-
-        $this->checkOrderInHistory($orderIncrementId);
-        $this->assertNotEmpty($order->getEmailSent());
+        $orderId = $this->placeOrder($cartId);
+        $this->checkOrderInHistory($orderId);
     }
 
     /**
@@ -222,7 +208,7 @@ QUERY;
     private function addProductToCart(string $cartId, float $qty, string $sku): void
     {
         $query = <<<QUERY
-mutation {
+mutation {  
   addSimpleProductsToCart(
     input: {
       cart_id: "{$cartId}"
@@ -364,7 +350,7 @@ QUERY;
         $query = <<<QUERY
 mutation {
   setShippingMethodsOnCart(input:  {
-    cart_id: "{$cartId}",
+    cart_id: "{$cartId}", 
     shipping_methods: [
       {
          carrier_code: "{$method['carrier_code']}"
@@ -480,7 +466,7 @@ QUERY;
         self::assertArrayHasKey('grand_total', $order);
     }
 
-    protected function tearDown(): void
+    public function tearDown()
     {
         $this->deleteCustomer();
         $this->deleteQuote();

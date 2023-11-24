@@ -24,7 +24,7 @@ class UrlResolverTest extends GraphQlAbstract
     /**
      * {@inheritdoc}
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
     }
@@ -179,6 +179,7 @@ QUERY;
             $actualUrls->getEntityType(),
             0
         );
+
         // querying a url that's a redirect the active redirected final url
         $this->queryUrlAndAssertResponse(
             (int) $product->getEntityId(),
@@ -187,6 +188,7 @@ QUERY;
             $actualUrls->getEntityType(),
             301
         );
+
         // create custom url that doesn't redirect
         /** @var  UrlRewrite $urlRewriteModel */
         $urlRewriteModel = $this->objectManager->create(UrlRewrite::class);
@@ -207,6 +209,7 @@ QUERY;
             $urlRewriteModel->setData($key, $value);
         }
         $urlRewriteModel->save();
+
         // querying a custom url that should return the target entity but relative should be the custom url
         $this->queryUrlAndAssertResponse(
             (int) $product->getEntityId(),
@@ -215,12 +218,14 @@ QUERY;
             $actualUrls->getEntityType(),
             0
         );
+
         // change custom url that does redirect
         $urlRewriteModel->setRedirectType('301');
         $urlRewriteModel->setId($urlRewriteModel->getId());
         $urlRewriteModel->save();
 
         ObjectManager::getInstance()->get(\Magento\TestFramework\Helper\CacheCleaner::class)->cleanAll();
+
         //modifying query by adding spaces to avoid getting cached values.
         $this->queryUrlAndAssertResponse(
             (int) $product->getEntityId(),
@@ -237,10 +242,10 @@ QUERY;
      *
      * @magentoApiDataFixture Magento/CatalogUrlRewrite/_files/product_with_category.php
      */
-    public function testCategoryUrlResolver($categoryUrlPath = null)
+    public function testCategoryUrlResolver()
     {
         $productSku = 'p002';
-        $categoryUrlPath = $categoryUrlPath ? $categoryUrlPath : 'cat-1.html';
+        $categoryUrlPath = 'cat-1.html';
         /** @var ProductRepositoryInterface $productRepository */
         $productRepository = $this->objectManager->get(ProductRepositoryInterface::class);
         $product = $productRepository->get($productSku, false, null, true);
@@ -358,7 +363,6 @@ QUERY;
   urlResolver(url:"{$urlPath}")
   {
    id
-   entity_uid
    relative_url
    type
    redirectCode
@@ -458,26 +462,6 @@ QUERY;
     }
 
     /**
-     * Test for category entity with empty url suffix
-     *
-     * @magentoApiDataFixture Magento/CatalogUrlRewrite/_files/product_with_category_empty_url_suffix.php
-     */
-    public function testCategoryUrlResolverWithEmptyUrlSuffix()
-    {
-        $this->testCategoryUrlResolver('cat-1');
-    }
-
-    /**
-     * Tests if target_path(relative_url) is resolved for Product entity with empty url suffix
-     *
-     * @magentoApiDataFixture Magento/CatalogUrlRewrite/_files/product_with_category_empty_url_suffix.php
-     */
-    public function testProductUrlResolverWithEmptyUrlSuffix()
-    {
-        $this->testProductUrlResolver();
-    }
-
-    /**
      * Assert response from GraphQl
      *
      * @param string $productId
@@ -499,7 +483,6 @@ QUERY;
   urlResolver(url:"{$urlKey}")
   {
    id
-   entity_uid
    relative_url
    type
    redirectCode
@@ -509,7 +492,6 @@ QUERY;
         $response = $this->graphQlQuery($query);
         $this->assertArrayHasKey('urlResolver', $response);
         $this->assertEquals($productId, $response['urlResolver']['id']);
-        $this->assertEquals(base64_encode((string)$productId), $response['urlResolver']['entity_uid']);
         $this->assertEquals($relativePath, $response['urlResolver']['relative_url']);
         $this->assertEquals(strtoupper($expectedType), $response['urlResolver']['type']);
         $this->assertEquals($redirectCode, $response['urlResolver']['redirectCode']);

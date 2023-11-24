@@ -11,7 +11,7 @@ use Magento\TestFramework\ObjectManager;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
 
 /**
- * The GraphQl test for product in multiple stores
+ * Class ProductInMultipleStoresTest
  */
 class ProductInMultipleStoresTest extends GraphQlAbstract
 {
@@ -31,6 +31,8 @@ class ProductInMultipleStoresTest extends GraphQlAbstract
     products(filter: {sku: {eq: "{$productSku}"}})
     {
         items {
+            attribute_set_id
+            created_at
             id
             name
             price {
@@ -43,6 +45,7 @@ class ProductInMultipleStoresTest extends GraphQlAbstract
             }
             sku
             type_id
+            updated_at
             ... on PhysicalProductInterface {
                 weight
             }

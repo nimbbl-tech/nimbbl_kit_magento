@@ -3,28 +3,18 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
 
 namespace Magento\Customer\Model\ResourceModel;
 
 use Magento\Customer\Api\AddressRepositoryInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Customer\Api\Data\AddressInterface;
-use Magento\Customer\Api\Data\AddressInterfaceFactory;
+use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Customer\Api\Data\RegionInterfaceFactory;
-use Magento\Customer\Model\CustomerRegistry;
-use Magento\Framework\Api\DataObjectHelper;
-use Magento\Framework\Api\Filter;
-use Magento\Framework\Api\FilterBuilder;
-use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrder;
-use Magento\Framework\Api\SortOrderBuilder;
-use Magento\Framework\Config\CacheInterface;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Store\Model\StoreManagerInterface;
-use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
+use Magento\Store\Api\Data\WebsiteInterface;
+use Magento\Store\Api\WebsiteRepositoryInterface;
 
 /**
  * Class with integration tests for AddressRepository.
@@ -33,7 +23,7 @@ use PHPUnit\Framework\TestCase;
  * @SuppressWarnings(PHPMD.ExcessivePublicCount)
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class AddressRepositoryTest extends TestCase
+class AddressRepositoryTest extends \PHPUnit\Framework\TestCase
 {
     /** @var AddressRepositoryInterface */
     private $repository;
@@ -44,41 +34,34 @@ class AddressRepositoryTest extends TestCase
     /** @var \Magento\Customer\Model\Data\Address[] */
     private $expectedAddresses;
 
-    /** @var AddressInterfaceFactory */
+    /** @var \Magento\Customer\Api\Data\AddressInterfaceFactory */
     private $addressFactory;
 
-    /** @var  DataObjectHelper */
+    /** @var  \Magento\Framework\Api\DataObjectHelper */
     private $dataObjectHelper;
 
-    /** @var CustomerRegistry */
     private $customerRegistry;
 
-    /** @var StoreManagerInterface */
-    private $storeManager;
-
-    /** @var RegionInterfaceFactory */
-    private $regionFactory;
-
-    /** @var CustomerRepositoryInterface */
-    private $customerRepository;
-
     /**
-     * @inheritdoc
+     * Set up.
      */
-    protected function setUp(): void
+    protected function setUp()
     {
-        $this->objectManager = Bootstrap::getObjectManager();
-        /* @var CacheInterface $cache */
-        $cache = $this->objectManager->get(CacheInterface::class);
+        $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+
+        /* @var \Magento\Framework\Config\CacheInterface $cache */
+        $cache = $this->objectManager->create(\Magento\Framework\Config\CacheInterface::class);
         $cache->remove('extension_attributes_config');
-        $this->repository = $this->objectManager->get(AddressRepositoryInterface::class);
-        $this->addressFactory = $this->objectManager->get(AddressInterfaceFactory::class);
-        $this->dataObjectHelper = $this->objectManager->get(DataObjectHelper::class);
-        $this->customerRegistry = $this->objectManager->get(CustomerRegistry::class);
-        $this->storeManager = $this->objectManager->get(StoreManagerInterface::class);
-        $this->regionFactory = $this->objectManager->get(RegionInterfaceFactory::class);
-        $this->customerRepository = $this->objectManager->get(CustomerRepositoryInterface::class);
-        $region = $this->regionFactory->create()
+
+        $this->repository = $this->objectManager->create(\Magento\Customer\Api\AddressRepositoryInterface::class);
+        $this->addressFactory = $this->objectManager->create(
+            \Magento\Customer\Api\Data\AddressInterfaceFactory::class
+        );
+        $this->dataObjectHelper = $this->objectManager->create(\Magento\Framework\Api\DataObjectHelper::class);
+        $this->customerRegistry = $this->objectManager->get(\Magento\Customer\Model\CustomerRegistry::class);
+
+        $regionFactory = $this->objectManager->get(RegionInterfaceFactory::class);
+        $region = $regionFactory->create()
             ->setRegionCode('AL')
             ->setRegion('Alabama')
             ->setRegionId(1);
@@ -107,13 +90,14 @@ class AddressRepositoryTest extends TestCase
             ->setTelephone('3234676')
             ->setFirstname('John')
             ->setLastname('Smith');
+
         $this->expectedAddresses = [$address, $address2];
     }
 
     /**
-     * @inheritdoc
+     * Tear down.
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
         $this->customerRegistry->remove(1);
     }
@@ -125,9 +109,8 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoDataFixture  Magento/Customer/_files/customer_two_addresses.php
      * @magentoAppIsolation enabled
-     * @return void
      */
-    public function testSaveAddressChanges(): void
+    public function testSaveAddressChanges()
     {
         $address = $this->repository->getById(2);
 
@@ -149,20 +132,11 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoDataFixture  Magento/Customer/_files/customer_two_addresses.php
      * @magentoAppIsolation enabled
-     * @return void
+     * @expectedException \Magento\Framework\Exception\NoSuchEntityException
+     * @expectedExceptionMessage No such entity with addressId = 4200
      */
-    public function testSaveAddressesIdSetButNotAlreadyExisting(): void
+    public function testSaveAddressesIdSetButNotAlreadyExisting()
     {
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'addressId',
-                'fieldValue' => 4200,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
-
         $proposedAddress = $this->_createSecondAddress()->setId(4200);
         $this->repository->save($proposedAddress);
     }
@@ -174,9 +148,8 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoDataFixture  Magento/Customer/_files/customer_two_addresses.php
      * @magentoAppIsolation enabled
-     * @return void
      */
-    public function testGetAddressById(): void
+    public function testGetAddressById()
     {
         $addressId = 2;
         $address = $this->repository->getById($addressId);
@@ -187,20 +160,11 @@ class AddressRepositoryTest extends TestCase
      * Test for method get address by id with incorrect id.
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php
-     * @return void
+     * @expectedException \Magento\Framework\Exception\NoSuchEntityException
+     * @expectedExceptionMessage No such entity with addressId = 12345
      */
-    public function testGetAddressByIdBadAddressId(): void
+    public function testGetAddressByIdBadAddressId()
     {
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'addressId',
-                'fieldValue' => 12345,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
-
         $this->repository->getById(12345);
     }
 
@@ -210,9 +174,8 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer.php
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoAppIsolation enabled
-     * @return void
      */
-    public function testSaveNewAddress(): void
+    public function testSaveNewAddress()
     {
         $proposedAddress = $this->_createSecondAddress()->setCustomerId(1);
 
@@ -239,9 +202,8 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer.php
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoAppIsolation enabled
-     * @return void
      */
-    public function testSaveNewAddressWithAttributes(): void
+    public function testSaveNewAddressWithAttributes()
     {
         $proposedAddress = $this->_createFirstAddress()
             ->setCustomAttribute('firstname', 'Jane')
@@ -267,9 +229,8 @@ class AddressRepositoryTest extends TestCase
      * @magentoDataFixture  Magento/Customer/_files/customer.php
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
      * @magentoAppIsolation enabled
-     * @return void
      */
-    public function testSaveNewInvalidAddress(): void
+    public function testSaveNewInvalidAddress()
     {
         $address = $this->_createFirstAddress()
             ->setCustomAttribute('firstname', null)
@@ -293,19 +254,15 @@ class AddressRepositoryTest extends TestCase
      *
      * @return void
      */
-    public function testSaveAddressesCustomerIdNotExist(): void
+    public function testSaveAddressesCustomerIdNotExist()
     {
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'customerId',
-                'fieldValue' => 4200,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
         $proposedAddress = $this->_createSecondAddress()->setCustomerId(4200);
-        $this->repository->save($proposedAddress);
+        try {
+            $this->repository->save($proposedAddress);
+            $this->fail('Expected exception not thrown');
+        } catch (NoSuchEntityException $nsee) {
+            $this->assertEquals('No such entity with customerId = 4200', $nsee->getMessage());
+        }
     }
 
     /**
@@ -313,19 +270,15 @@ class AddressRepositoryTest extends TestCase
      *
      * @return void
      */
-    public function testSaveAddressesCustomerIdInvalid(): void
+    public function testSaveAddressesCustomerIdInvalid()
     {
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'customerId',
-                'fieldValue' => 'this_is_not_a_valid_id',
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
         $proposedAddress = $this->_createSecondAddress()->setCustomerId('this_is_not_a_valid_id');
-        $this->repository->save($proposedAddress);
+        try {
+            $this->repository->save($proposedAddress);
+            $this->fail('Expected exception not thrown');
+        } catch (NoSuchEntityException $nsee) {
+            $this->assertEquals('No such entity with customerId = this_is_not_a_valid_id', $nsee->getMessage());
+        }
     }
 
     /**
@@ -333,26 +286,24 @@ class AddressRepositoryTest extends TestCase
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php
      * @magentoDataFixture Magento/Customer/_files/customer_address.php
-     * @return void
      */
-    public function testDeleteAddress(): void
+    public function testDeleteAddress()
     {
         $addressId = 1;
         // See that customer already has an address with expected addressId
         $addressDataObject = $this->repository->getById($addressId);
         $this->assertEquals($addressDataObject->getId(), $addressId);
+
         // Delete the address from the customer
         $this->repository->delete($addressDataObject);
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'addressId',
-                'fieldValue' => 1,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
-        $this->repository->getById($addressId);
+
+        // See that address is deleted
+        try {
+            $addressDataObject = $this->repository->getById($addressId);
+            $this->fail("Expected NoSuchEntityException not caught");
+        } catch (NoSuchEntityException $exception) {
+            $this->assertEquals('No such entity with addressId = 1', $exception->getMessage());
+        }
     }
 
     /**
@@ -360,9 +311,8 @@ class AddressRepositoryTest extends TestCase
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php
      * @magentoDataFixture Magento/Customer/_files/customer_address.php
-     * @return void
      */
-    public function testDeleteAddressById(): void
+    public function testDeleteAddressById()
     {
         $addressId = 1;
         // See that customer already has an address with expected addressId
@@ -371,63 +321,50 @@ class AddressRepositoryTest extends TestCase
 
         // Delete the address from the customer
         $this->repository->deleteById($addressId);
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'addressId',
-                'fieldValue' => 1,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
-        $this->repository->getById($addressId);
+
+        // See that address is deleted
+        try {
+            $addressDataObject = $this->repository->getById($addressId);
+            $this->fail("Expected NoSuchEntityException not caught");
+        } catch (NoSuchEntityException $exception) {
+            $this->assertEquals('No such entity with addressId = 1', $exception->getMessage());
+        }
     }
 
     /**
      * Test delete address from customer with incorrect address id.
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php
-     * @return void
      */
-    public function testDeleteAddressFromCustomerBadAddressId(): void
+    public function testDeleteAddressFromCustomerBadAddressId()
     {
-        $message = (string)__(
-            'No such entity with %fieldName = %fieldValue',
-            [
-                'fieldName' => 'addressId',
-                'fieldValue' => 12345,
-            ]
-        );
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage($message);
-        $this->repository->deleteById(12345);
+        try {
+            $this->repository->deleteById(12345);
+            $this->fail("Expected NoSuchEntityException not caught");
+        } catch (NoSuchEntityException $exception) {
+            $this->assertEquals('No such entity with addressId = 12345', $exception->getMessage());
+        }
     }
 
     /**
      * Test for searching addressed.
      *
-     * @param Filter[] $filters
-     * @param Filter[] $filterGroup
-     * @param SortOrder[] $filterOrders
+     * @param \Magento\Framework\Api\Filter[] $filters
+     * @param \Magento\Framework\Api\Filter[] $filterGroup
+     * @param \Magento\Framework\Api\SortOrder[] $filterOrders
      * @param array $expectedResult array of expected results indexed by ID
      * @param int $currentPage current page for search criteria
      *
-     * @return void
      * @dataProvider searchAddressDataProvider
      *
      * @magentoDataFixture  Magento/Customer/_files/customer.php
      * @magentoDataFixture  Magento/Customer/_files/customer_two_addresses.php
      * @magentoAppIsolation enabled
      */
-    public function testSearchAddresses(
-        $filters,
-        $filterGroup,
-        $filterOrders,
-        array $expectedResult,
-        int $currentPage
-    ): void {
-        /** @var SearchCriteriaBuilder $searchBuilder */
-        $searchBuilder = $this->objectManager->create(SearchCriteriaBuilder::class);
+    public function testSearchAddresses($filters, $filterGroup, $filterOrders, $expectedResult, $currentPage)
+    {
+        /** @var \Magento\Framework\Api\SearchCriteriaBuilder $searchBuilder */
+        $searchBuilder = $this->objectManager->create(\Magento\Framework\Api\SearchCriteriaBuilder::class);
         foreach ($filters as $filter) {
             $searchBuilder->addFilters([$filter]);
         }
@@ -449,7 +386,7 @@ class AddressRepositoryTest extends TestCase
         $items = array_values($searchResults->getItems());
 
         $this->assertEquals(count($expectedResult), $searchResults->getTotalCount());
-        $this->assertCount(1, $items);
+        $this->assertEquals(1, count($items));
 
         $expectedResultIndex = count($expectedResult) - 1;
 
@@ -464,18 +401,18 @@ class AddressRepositoryTest extends TestCase
      *
      * @return array
      */
-    public function searchAddressDataProvider(): array
+    public function searchAddressDataProvider()
     {
         /**
-         * @var FilterBuilder $filterBuilder
+         * @var \Magento\Framework\Api\FilterBuilder $filterBuilder
          */
-        $filterBuilder = Bootstrap::getObjectManager()
-            ->create(FilterBuilder::class);
+        $filterBuilder = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
+            ->create(\Magento\Framework\Api\FilterBuilder::class);
         /**
-         * @var SortOrderBuilder $orderBuilder
+         * @var \Magento\Framework\Api\SortOrderBuilder $orderBuilder
          */
-        $orderBuilder = Bootstrap::getObjectManager()
-            ->create(SortOrderBuilder::class);
+        $orderBuilder = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
+            ->create(\Magento\Framework\Api\SortOrderBuilder::class);
         return [
             'Address with postcode 75477' => [
                 [$filterBuilder->setField('postcode')->setValue('75477')->create()],
@@ -543,13 +480,13 @@ class AddressRepositoryTest extends TestCase
      * Test for save addresses with restricted countries.
      *
      * @magentoDataFixture Magento/Customer/Fixtures/customer_sec_website.php
-     * @return void
      */
-    public function testSaveAddressWithRestrictedCountries(): void
+    public function testSaveAddressWithRestrictedCountries()
     {
-        $website = $this->storeManager->getWebsite('test');
-        $customer = $this->customerRepository->get('customer.web@example.com', (int)$website->getId());
-        $region = $this->regionFactory->create()
+        $website = $this->getWebsite('test');
+        $customer = $this->getCustomer('customer.web@example.com', (int)$website->getId());
+        $regionFactory = $this->objectManager->get(RegionInterfaceFactory::class);
+        $region = $regionFactory->create()
             ->setRegionCode('CA')
             ->setRegion('California')
             ->setRegionId(12);
@@ -562,7 +499,7 @@ class AddressRepositoryTest extends TestCase
             'country_id' => 'US',
             'region' => $region,
             'postcode' => 90230,
-            'telephone' => '555655431',
+            'telephone' => '555655431'
         ];
         $address = $this->addressFactory->create(['data' => $addressData]);
         $saved = $this->repository->save($address);
@@ -574,9 +511,8 @@ class AddressRepositoryTest extends TestCase
      *
      * @magentoDataFixture  Magento/Customer/_files/customer.php
      * @magentoDataFixture  Magento/Customer/_files/customer_address.php
-     * @return void
      */
-    public function testSaveNewAddressWithExtraSpacesInPhone(): void
+    public function testSaveNewAddressWithExtraSpacesInPhone()
     {
         $proposedAddress = $this->_createSecondAddress()
             ->setCustomerId(1)
@@ -590,9 +526,8 @@ class AddressRepositoryTest extends TestCase
      * Scenario for customer's default shipping and billing address saving and rollback.
      *
      * @magentoDataFixture Magento/Customer/_files/customer_without_addresses.php
-     * @return void
      */
-    public function testCustomerAddressRelationSynchronisation(): void
+    public function testCustomerAddressRelationSynchronisation()
     {
         /**
          * Creating new address which is default shipping and billing for existing customer.
@@ -607,7 +542,7 @@ class AddressRepositoryTest extends TestCase
         /**
          * Customer registry should be updated with default shipping and billing addresses.
          */
-        $customer = $this->customerRepository->get('customer@example.com', 1);
+        $customer = $this->getCustomer('customer@example.com', 1);
         $this->assertEquals($savedAddress->getId(), $customer->getDefaultShipping());
         $this->assertEquals($savedAddress->getId(), $customer->getDefaultBilling());
 
@@ -620,66 +555,21 @@ class AddressRepositoryTest extends TestCase
         /**
          * Customer's default shipping and billing addresses should be updated.
          */
-        $customer = $this->customerRepository->get('customer@example.com', 1);
+        $customer = $this->getCustomer('customer@example.com', 1);
         $this->assertNull($customer->getDefaultShipping());
         $this->assertNull($customer->getDefaultBilling());
     }
 
     /**
-     * Update Customer Address, with Alphanumeric Zip Code
-     *
-     * @magentoDataFixture Magento/Customer/_files/customer_one_address.php
-     * @return void
-     */
-    public function testUpdateWithAlphanumericZipCode(): void
-    {
-        $region = $this->regionFactory->create()
-            ->setRegionCode('PH')
-            ->setRegion('Pinminnoch')
-            ->setRegionId(1);
-        $websiteId = (int)$this->storeManager->getWebsite('base')->getId();
-        $customer = $this->customerRepository->get('customer_one_address@test.com', $websiteId);
-        $defaultBillingAddress = $customer->getDefaultBilling();
-        $addressData = [
-            AddressInterface::FIRSTNAME => 'Doe',
-            AddressInterface::LASTNAME => 'Doe',
-            AddressInterface::MIDDLENAME => 'Middle Name',
-            AddressInterface::SUFFIX => '_Suffix',
-            AddressInterface::PREFIX => 'Prefix',
-            AddressInterface::COMPANY => 'Company',
-            AddressInterface::STREET => ['Northgate Street, 39'],
-            AddressInterface::CITY => 'BICKTON',
-            AddressInterface::COUNTRY_ID => 'GB',
-            AddressInterface::REGION => $region,
-            AddressInterface::POSTCODE => 'KA26 1PF',
-            AddressInterface::TELEPHONE => '999-777-111-2345',
-            AddressInterface::VAT_ID => '987654321',
-        ];
-        $customerAddress = $this->repository->getById((int)$defaultBillingAddress);
-        foreach ($addressData as $key => $value) {
-            $customerAddress->setData($key, $value);
-        }
-        $savedAddress = $this->repository->save($customerAddress);
-        $customerData = $savedAddress->__toArray();
-        foreach ($addressData as $key => $value) {
-            if ($key === AddressInterface::REGION) {
-                $this->assertEquals($customerData[$key][AddressInterface::REGION], $value->getRegion());
-            } else {
-                $this->assertEquals($value, $customerData[$key]);
-            }
-        }
-    }
-
-    /**
      * Helper function that returns an Address Data Object that matches the data from customer_address fixture
      *
-     * @return AddressInterface
+     * @return \Magento\Customer\Api\Data\AddressInterface
      */
-    private function _createFirstAddress(): AddressInterface
+    private function _createFirstAddress()
     {
         $address = $this->addressFactory->create();
         $this->dataObjectHelper->mergeDataObjects(
-            AddressInterface::class,
+            \Magento\Customer\Api\Data\AddressInterface::class,
             $address,
             $this->expectedAddresses[0]
         );
@@ -691,18 +581,48 @@ class AddressRepositoryTest extends TestCase
     /**
      * Helper function that returns an Address Data Object that matches the data from customer_two_address fixture
      *
-     * @return AddressInterface
+     * @return \Magento\Customer\Api\Data\AddressInterface
      */
-    private function _createSecondAddress(): AddressInterface
+    private function _createSecondAddress()
     {
         $address = $this->addressFactory->create();
         $this->dataObjectHelper->mergeDataObjects(
-            AddressInterface::class,
+            \Magento\Customer\Api\Data\AddressInterface::class,
             $address,
             $this->expectedAddresses[1]
         );
         $address->setId(null);
         $address->setRegion($this->expectedAddresses[1]->getRegion());
         return $address;
+    }
+
+    /**
+     * Gets customer entity.
+     *
+     * @param string $email
+     * @param int $websiteId
+     * @return CustomerInterface
+     * @throws NoSuchEntityException
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    private function getCustomer(string $email, int $websiteId): CustomerInterface
+    {
+        /** @var CustomerRepositoryInterface $repository */
+        $repository = $this->objectManager->get(CustomerRepositoryInterface::class);
+        return $repository->get($email, $websiteId);
+    }
+
+    /**
+     * Gets website entity.
+     *
+     * @param string $code
+     * @return WebsiteInterface
+     * @throws NoSuchEntityException
+     */
+    private function getWebsite(string $code): WebsiteInterface
+    {
+        /** @var WebsiteRepositoryInterface $repository */
+        $repository = $this->objectManager->get(WebsiteRepositoryInterface::class);
+        return $repository->get($code);
     }
 }

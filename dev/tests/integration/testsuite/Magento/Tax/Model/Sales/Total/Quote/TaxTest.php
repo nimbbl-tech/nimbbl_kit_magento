@@ -5,9 +5,8 @@
  */
 namespace Magento\Tax\Model\Sales\Total\Quote;
 
-use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Quote\Model\Quote\TotalsCollector;
+use Magento\Tax\Model\Calculation;
 use Magento\TestFramework\Helper\Bootstrap;
 
 require_once __DIR__ . '/SetupUtil.php';
@@ -16,9 +15,6 @@ require_once __DIR__ . '/../../../../_files/full_discount_with_tax.php';
 
 /**
  * Class TaxTest
- *
- * Tests sales taxes with discounts/price rules during checkout.
- *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class TaxTest extends \Magento\TestFramework\Indexer\TestCase
@@ -38,7 +34,7 @@ class TaxTest extends \Magento\TestFramework\Indexer\TestCase
     /**
      * test setup
      */
-    protected function setUp(): void
+    public function setUp()
     {
         /** @var  \Magento\Framework\ObjectManagerInterface $objectManager */
         $objectManager = Bootstrap::getObjectManager();
@@ -306,11 +302,6 @@ class TaxTest extends \Magento\TestFramework\Indexer\TestCase
         $quoteAddress = $quote->getShippingAddress();
         $this->totalsCollector->collectAddressTotals($quote, $quoteAddress);
         $this->verifyResult($quoteAddress, $expectedResults);
-
-        $skus = array_map(function ($item) {
-            return $item['sku'];
-        }, $quoteData['items'] ?? []);
-        $this->removeProducts($skus);
     }
 
     /**
@@ -323,33 +314,5 @@ class TaxTest extends \Magento\TestFramework\Indexer\TestCase
     {
         global $taxCalculationData;
         return $taxCalculationData;
-    }
-
-    /**
-     * Cleanup test by removing products.
-     *
-     * @param string[] $skus
-     * @return void
-     */
-    private function removeProducts(array $skus): void
-    {
-        $objectManager = Bootstrap::getObjectManager();
-        /** @var ProductRepositoryInterface $productRepository */
-        $productRepository = $objectManager->create(ProductRepositoryInterface::class);
-        $registry = $objectManager->get(\Magento\Framework\Registry::class);
-        /** @var ProductRepositoryInterface $productRepository */
-        $registry->unregister('isSecureArea');
-        $registry->register('isSecureArea', true);
-
-        foreach ($skus as $sku) {
-            try {
-                $productRepository->deleteById($sku);
-            } catch (NoSuchEntityException $e) {
-                // product already deleted
-            }
-        }
-
-        $registry->unregister('isSecureArea');
-        $registry->register('isSecureArea', false);
     }
 }

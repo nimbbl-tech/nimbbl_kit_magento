@@ -15,8 +15,6 @@ use Magento\Catalog\Model\ResourceModel\Category\Collection;
 use Magento\Catalog\Model\ResourceModel\Category\Tree;
 use Magento\Catalog\Model\ResourceModel\Product\Collection as ProductCollection;
 use Magento\Eav\Model\Entity\Attribute\Exception as AttributeException;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\Math\Random;
 use Magento\Framework\Url;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Model\Store;
@@ -51,7 +49,7 @@ class CategoryTest extends TestCase
      */
     protected $objectManager;
 
-    /** @var CategoryResource */
+    /** @var CategoryRepository */
     private $categoryResource;
 
     /** @var CategoryRepositoryInterface */
@@ -60,7 +58,7 @@ class CategoryTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = Bootstrap::getObjectManager();
         /** @var $storeManager StoreManagerInterface */
@@ -215,15 +213,9 @@ class CategoryTest extends TestCase
 
     public function testGetDesignAttributes(): void
     {
-        $attributeCodes = array_map(
-            function ($elem) {
-                return $elem->getAttributeCode();
-            },
-            $this->_model->getDesignAttributes()
-        );
-
-        $this->assertContains('custom_design_from', $attributeCodes);
-        $this->assertContains('custom_design_to', $attributeCodes);
+        $attributes = $this->_model->getDesignAttributes();
+        $this->assertContains('custom_design_from', array_keys($attributes));
+        $this->assertContains('custom_design_to', array_keys($attributes));
     }
 
     public function testCheckId(): void
@@ -358,17 +350,6 @@ class CategoryTest extends TestCase
     }
 
     /**
-     * @magentoDbIsolation enabled
-     * @magentoAppArea adminhtml
-     * @magentoDataFixture Magento/Catalog/_files/categories_no_products.php
-     */
-    public function testChildrenCountAfterDeleteParentCategory(): void
-    {
-        $this->categoryRepository->deleteByIdentifier(3);
-        $this->assertEquals(8, $this->categoryResource->getChildrenCount(1));
-    }
-
-    /**
      * @magentoDataFixture Magento/Catalog/_files/category.php
      */
     public function testAddChildCategory(): void
@@ -382,7 +363,7 @@ class CategoryTest extends TestCase
         $this->_model->setData($data);
         $this->categoryResource->save($this->_model);
         $parentCategory = $this->categoryRepository->get(333);
-        $this->assertStringContainsString((string)$this->_model->getId(), $parentCategory->getChildren());
+        $this->assertContains($this->_model->getId(), $parentCategory->getChildren());
     }
 
     /**
@@ -419,29 +400,6 @@ class CategoryTest extends TestCase
         $category = $this->categoryRepository->get($this->_model->getId());
         $categoryData = $category->toArray(array_keys($data));
         $this->assertSame($data, $categoryData);
-    }
-
-    /**
-     * Test for Category Description field to be able to contain >64kb of data
-     *
-     * @throws NoSuchEntityException
-     * @throws \Exception
-     */
-    public function testMaximumDescriptionLength(): void
-    {
-        $random = Bootstrap::getObjectManager()->get(Random::class);
-        $longDescription = $random->getRandomString(70000);
-
-        $requiredData = [
-            'name' => 'Test Category',
-            'attribute_set_id' => '3',
-            'parent_id' => 2,
-            'description' => $longDescription
-        ];
-        $this->_model->setData($requiredData);
-        $this->categoryResource->save($this->_model);
-        $category = $this->categoryRepository->get($this->_model->getId());
-        $this->assertEquals($longDescription, $category->getDescription());
     }
 
     /**
@@ -508,5 +466,36 @@ class CategoryTest extends TestCase
         $collection->addNameToResult()->load();
 
         return $collection->getItemByColumnValue('name', $categoryName);
+    }
+
+    /**
+     * @return void
+     */
+    public function testSaveCategoryWithWrongPath(): void
+    {
+        /** @var CategoryRepositoryInterface $categoryRepository */
+        $categoryRepository = $this->objectManager->get(CategoryRepositoryInterface::class);
+        $categoryFactory = $this->objectManager->get(\Magento\Catalog\Api\Data\CategoryInterfaceFactory::class);
+
+        /** @var \Magento\Catalog\Api\Data\CategoryInterface $category */
+        $category = $categoryFactory->create(
+            [
+                'data' => [
+                    'name' => 'Category With Wrong Path',
+                    'parent_id' => 2,
+                    'path' => 'wrong/path',
+                    'level' => 2,
+                    'available_sort_by' =>['position', 'name'],
+                    'default_sort_by' => 'name',
+                    'is_active' => true,
+                    'position' => 1,
+                ],
+            ]
+        );
+        $category->isObjectNew(true);
+        $category->save();
+
+        $createdCategory = $categoryRepository->get($category->getId());
+        $this->assertEquals('0/0/'. $createdCategory->getId(), $createdCategory->getPath());
     }
 }

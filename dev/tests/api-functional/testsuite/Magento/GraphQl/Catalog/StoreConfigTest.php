@@ -42,7 +42,6 @@ class StoreConfigTest extends GraphQlAbstract
     list_per_page,
     catalog_default_sort_by,
     root_category_id
-    root_category_uid
   }
 }
 QUERY;
@@ -59,7 +58,6 @@ QUERY;
         $this->assertEquals(8, $response['storeConfig']['list_per_page']);
         $this->assertEquals('asc', $response['storeConfig']['catalog_default_sort_by']);
         $this->assertEquals(2, $response['storeConfig']['root_category_id']);
-        $this->assertEquals(base64_encode('2'), $response['storeConfig']['root_category_uid']);
     }
 
     /**
@@ -90,7 +88,6 @@ QUERY;
     list_per_page,
     catalog_default_sort_by,
     root_category_id
-    root_category_uid
   }
 }
 QUERY;
@@ -107,6 +104,5 @@ QUERY;
         $this->assertEquals(8, $response['storeConfig']['list_per_page']);
         $this->assertEquals('asc', $response['storeConfig']['catalog_default_sort_by']);
         $this->assertEquals(2, $response['storeConfig']['root_category_id']);
-        $this->assertEquals(base64_encode('2'), $response['storeConfig']['root_category_uid']);
     }
 }

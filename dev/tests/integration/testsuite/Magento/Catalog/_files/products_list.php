@@ -29,7 +29,6 @@ $product
 $product = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
     ->create(\Magento\Catalog\Model\Product::class);
 $product
-    ->setId(153)
     ->setTypeId('simple')
     ->setAttributeSetId(4)
     ->setWebsiteIds([1])
@@ -50,7 +49,6 @@ $product
 $product = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
     ->create(\Magento\Catalog\Model\Product::class);
 $product
-    ->setId(156)
     ->setTypeId('simple')
     ->setAttributeSetId(4)
     ->setWebsiteIds([1])

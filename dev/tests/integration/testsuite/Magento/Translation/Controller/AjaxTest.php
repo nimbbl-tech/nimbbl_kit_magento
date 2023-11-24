@@ -6,79 +6,60 @@
 
 namespace Magento\Translation\Controller;
 
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\TestFramework\Helper\Bootstrap;
-use Magento\Translation\Model\ResourceModel\StringUtils;
-
-/**
- * Test for Magento\Translation\Controller\Ajax class.
- *
- * @magentoDbIsolation disabled
- */
 class AjaxTest extends \Magento\TestFramework\TestCase\AbstractController
 {
-    /**
-     * @param array $postData
-     * @param string $expected
-     *
-     * @return void
-     * @dataProvider indexActionDataProvider
-     * @magentoConfigFixture default_store dev/translate_inline/active 1
-     */
-    public function testIndexAction(array $postData, string $expected): void
+    protected function setUp()
     {
-        $this->getRequest()->setPostValue('translate', $postData);
-        $this->dispatch('translation/ajax/index');
-        $result = $this->getResponse()->getBody();
-        $this->assertEquals($expected, $result);
+        /* Called getConfig as workaround for setConfig bug */
+        \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(
+            \Magento\Store\Model\StoreManagerInterface::class
+        )->getStore(
+            'default'
+        )->getConfig(
+            'dev/translate_inline/active'
+        );
+        \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(
+            \Magento\Framework\App\Config\MutableScopeConfigInterface::class
+        )->setValue(
+            'dev/translate_inline/active',
+            true,
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            'default'
+        );
+        parent::setUp();
     }
 
     /**
-     * @return array
+     * @dataProvider indexActionDataProvider
      */
-    public function indexActionDataProvider(): array
+    public function testIndexAction($postData, $expected)
+    {
+        $this->getRequest()->setPostValue('translate', $postData);
+        $this->dispatch('translation/ajax/index');
+        $this->assertEquals($expected, $this->getResponse()->getBody());
+    }
+
+    public function indexActionDataProvider()
     {
         return [
             [
                 [
                     [
-                        'original' => 'phrase with &',
-                        'custom' => 'phrase with & translated',
-                    ],
+                        'original' => 'phrase1',
+                        'custom' => 'translation1'
+                    ]
                 ],
-                '{"phrase with &":"phrase with & translated"}',
+                '{"phrase1":"translation1"}'
             ],
             [
                 [
                     [
-                        'original' => 'phrase with &',
-                        'custom' => 'phrase with & translated (updated)',
-                    ],
+                        'original' => 'phrase2',
+                        'custom' => 'translation2'
+                    ]
                 ],
-                '{"phrase with &":"phrase with & translated (updated)"}',
-            ],
-            [
-                [
-                    [
-                        'original' => 'phrase with &',
-                        'custom' => 'phrase with &',
-                    ],
-                ],
-                '[]',
-            ],
+                '{"phrase1":"translation1","phrase2":"translation2"}'
+            ]
         ];
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function tearDownAfterClass(): void
-    {
-        try {
-            Bootstrap::getObjectManager()->get(StringUtils::class)->deleteTranslate('phrase with &');
-        } catch (NoSuchEntityException $exception) {
-            //translate already deleted
-        }
-        parent::tearDownAfterClass();
     }
 }

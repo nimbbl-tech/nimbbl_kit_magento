@@ -3,24 +3,17 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
 namespace Magento\CatalogSearch\Model\Layer\Filter;
-
-use Magento\Catalog\Api\Data\ProductAttributeInterface;
-use Magento\Catalog\Model\Layer\Category as LayerCategory;
-use Magento\TestFramework\Helper\Bootstrap;
-use Magento\TestFramework\Request;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for \Magento\CatalogSearch\Model\Layer\Filter\Attribute.
  *
  * @magentoDataFixture Magento/Catalog/Model/Layer/Filter/_files/attribute_with_option.php
  */
-class AttributeTest extends TestCase
+class AttributeTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var Attribute
+     * @var \Magento\CatalogSearch\Model\Layer\Filter\Attribute
      */
     protected $_model;
 
@@ -30,18 +23,16 @@ class AttributeTest extends TestCase
     protected $_attributeOptionId;
 
     /**
-     * @var mixed
+     * @var \Magento\Catalog\Model\Layer
      */
-    private $request;
+    protected $_layer;
 
-    /**
-     * @inheritdoc
-     */
-    protected function setUp(): void
+    protected function setUp()
     {
-        $objectManager = Bootstrap::getObjectManager();
-        /** @var ProductAttributeInterface $attribute */
-        $attribute = $objectManager->get(ProductAttributeInterface::class);
+        /** @var $attribute \Magento\Catalog\Model\Entity\Attribute */
+        $attribute = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
+            \Magento\Catalog\Model\Entity\Attribute::class
+        );
         $attribute->loadByCode('catalog_product', 'attribute_with_option');
         foreach ($attribute->getSource()->getAllOptions() as $optionInfo) {
             if ($optionInfo['label'] == 'Option Label') {
@@ -50,56 +41,54 @@ class AttributeTest extends TestCase
             }
         }
 
-        /** @var LayerCategory $layer */
-        $layer = $objectManager->get(LayerCategory::class);
-        $this->request = $objectManager->get(Request::class);
-        $this->_model = $objectManager->create(Attribute::class, ['layer' => $layer]);
+        $this->_layer = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
+            ->create(\Magento\Catalog\Model\Layer\Category::class);
+        $this->_model = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
+            ->create(\Magento\CatalogSearch\Model\Layer\Filter\Attribute::class, ['layer' => $this->_layer]);
         $this->_model->setAttributeModel($attribute);
         $this->_model->setRequestVar('attribute');
     }
 
-    /**
-     * @return void
-     */
     public function testOptionIdNotEmpty()
     {
         $this->assertNotEmpty($this->_attributeOptionId, 'Fixture attribute option id.'); // just in case
     }
 
-    /**
-     * @return void
-     */
     public function testApplyInvalid()
     {
         $this->assertEmpty($this->_model->getLayer()->getState()->getFilters());
-        $this->request->setParam('attribute', []);
-        $this->_model->apply($this->request);
+        $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        $request = $objectManager->get(\Magento\TestFramework\Request::class);
+        $request->setParam('attribute', []);
+        $this->_model->apply($request);
 
         $this->assertEmpty($this->_model->getLayer()->getState()->getFilters());
     }
 
-    /**
-     * @return void
-     */
     public function testApply()
     {
         $this->assertEmpty($this->_model->getLayer()->getState()->getFilters());
-        $this->request->setParam('attribute', $this->_attributeOptionId);
-        $this->_model->apply($this->request);
+
+        $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        $request = $objectManager->get(\Magento\TestFramework\Request::class);
+        $request->setParam('attribute', $this->_attributeOptionId);
+        $this->_model->apply($request);
 
         $this->assertNotEmpty($this->_model->getLayer()->getState()->getFilters());
     }
 
     /**
-     * @return void
+     * @depends testApply
      */
     public function testGetItemsWithApply()
     {
-        $this->request->setParam('attribute', $this->_attributeOptionId);
-        $this->_model->apply($this->request);
+        $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        $request = $objectManager->get(\Magento\TestFramework\Request::class);
+        $request->setParam('attribute', $this->_attributeOptionId);
+        $this->_model->apply($request);
         $items = $this->_model->getItems();
 
-        $this->assertIsArray($items);
+        $this->assertInternalType('array', $items);
         $this->assertEmpty($items);
     }
 }

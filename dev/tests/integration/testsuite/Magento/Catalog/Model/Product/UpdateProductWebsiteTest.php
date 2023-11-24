@@ -10,7 +10,7 @@ namespace Magento\Catalog\Model\Product;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\ResourceModel\Product\Website\Link;
-use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use Magento\TestFramework\Helper\Bootstrap;
@@ -38,7 +38,7 @@ class UpdateProductWebsiteTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
 
@@ -82,10 +82,10 @@ class UpdateProductWebsiteTest extends TestCase
      */
     public function testAssignNonExistingWebsite(): void
     {
-        $messageFormat = 'The product was unable to be saved. Please try again.';
+        $messageFormat = 'The website with id %s that was requested wasn\'t found. Verify the website and try again.';
         $nonExistingWebsiteId = 921564;
-        $this->expectException(CouldNotSaveException::class);
-        $this->expectExceptionMessage((string)__($messageFormat));
+        $this->expectException(NoSuchEntityException::class);
+        $this->expectExceptionMessage((string)__(sprintf($messageFormat, $nonExistingWebsiteId)));
         $this->updateProductWebsites('simple2', [$nonExistingWebsiteId]);
     }
 

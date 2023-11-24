@@ -12,7 +12,6 @@ use Magento\TestFramework\TestCase\AbstractBackendController;
 /**
  * New action html test
  *
- * Verify the request object contains the proper form object for action
  * @magentoAppArea adminhtml
  */
 class NewActionHtmlTest extends AbstractBackendController
@@ -33,11 +32,6 @@ class NewActionHtmlTest extends AbstractBackendController
     private $formName = 'test_form';
 
     /**
-     * @var string
-     */
-    private $requestFormName = 'rule_actions_fieldset_';
-
-    /**
      * Test verifies that execute method has the proper data-form-part value in html response
      *
      * @return void
@@ -48,7 +42,7 @@ class NewActionHtmlTest extends AbstractBackendController
         $this->dispatch($this->uri);
         $html = $this->getResponse()
             ->getBody();
-        $this->assertStringContainsString($this->formName, $html);
+        $this->assertContains($this->formName, $html);
     }
 
     /**
@@ -79,7 +73,6 @@ class NewActionHtmlTest extends AbstractBackendController
         $this->getRequest()->setParams(
             [
                 'id' => 1,
-                'form' => $this->requestFormName,
                 'form_namespace' => $this->formName,
                 'type' => 'Magento\SalesRule\Model\Rule\Condition\Product|quote_item_price',
             ]

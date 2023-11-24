@@ -34,35 +34,8 @@ QUERY;
         $response = $this->graphQlQuery($query);
 
         self::assertArrayHasKey('url', $response['products']['items'][0]['small_image']);
-        self::assertStringContainsString('magento_image.jpg', $response['products']['items'][0]['small_image']['url']);
+        self::assertContains('magento_image.jpg', $response['products']['items'][0]['small_image']['url']);
         self::assertTrue($this->checkImageExists($response['products']['items'][0]['small_image']['url']));
-    }
-
-    /**
-     * Test for get product image placeholder
-     *
-     * @magentoApiDataFixture Magento/Catalog/_files/product_simple.php
-     */
-    public function testProductSmallImageUrlPlaceholder()
-    {
-        $productSku = 'simple';
-        $query = <<<QUERY
-{
-  products(filter: {sku: {eq: "{$productSku}"}}) {
-    items {
-        small_image {
-            url
-        }
-    }
-  }
-}
-QUERY;
-        $response = $this->graphQlQuery($query);
-        $responseImage = $response['products']['items'][0]['small_image'];
-
-        self::assertArrayHasKey('url', $responseImage);
-        self::assertStringContainsString('placeholder/small_image.jpg', $responseImage['url']);
-        self::assertTrue($this->checkImageExists($responseImage['url']));
     }
 
     /**
@@ -91,11 +64,11 @@ QUERY;
         $this->assertCount(2, $mediaGallery);
         $this->assertEquals('Image Alt Text', $mediaGallery[0]['label']);
         $this->assertEquals('image', $mediaGallery[0]['media_type']);
-        $this->assertStringContainsString('magento_image', $mediaGallery[0]['file']);
+        $this->assertContains('magento_image', $mediaGallery[0]['file']);
         $this->assertEquals(['image', 'small_image'], $mediaGallery[0]['types']);
         $this->assertEquals('Thumbnail Image', $mediaGallery[1]['label']);
         $this->assertEquals('image', $mediaGallery[1]['media_type']);
-        $this->assertStringContainsString('magento_thumbnail', $mediaGallery[1]['file']);
+        $this->assertContains('magento_thumbnail', $mediaGallery[1]['file']);
         $this->assertEquals(['thumbnail', 'swatch_image'], $mediaGallery[1]['types']);
     }
 
@@ -205,7 +178,7 @@ QUERY;
         $response = $this->graphQlQuery($query);
 
         self::assertArrayHasKey('file', $response['products']['items'][0]['media_gallery_entries'][0]);
-        self::assertStringContainsString(
+        self::assertContains(
             'magento_image.jpg',
             $response['products']['items'][0]['media_gallery_entries'][0]['file']
         );

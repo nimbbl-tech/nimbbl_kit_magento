@@ -11,10 +11,9 @@ use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\AddressInterface;
 use Magento\Customer\Model\Address;
 use Magento\Customer\Model\AddressFactory;
-use Magento\Customer\Model\AddressRegistry;
 use Magento\Customer\Model\CustomerFactory;
 use Magento\Customer\Model\CustomerRegistry;
-use Magento\Framework\Encryption\EncryptorInterface;
+use Magento\Customer\Model\AddressRegistry;
 use Magento\Store\Api\WebsiteRepositoryInterface;
 use Magento\Store\Model\Website;
 use Magento\Store\Model\WebsiteRepository;
@@ -32,9 +31,6 @@ $customerRegistry = $objectManager->get(CustomerRegistry::class);
 $websiteRepository = $objectManager->create(WebsiteRepositoryInterface::class);
 /** @var Website $mainWebsite */
 $mainWebsite = $websiteRepository->get('base');
-/** @var EncryptorInterface $encryptor */
-$encryptor = $objectManager->get(EncryptorInterface::class);
-
 $customer->setWebsiteId($mainWebsite->getId())
     ->setEmail('customer_uk_address@test.com')
     ->setPassword('password')
@@ -71,7 +67,7 @@ $customerAddress->setData(
 );
 $customer->addAddress($customerAddress);
 $customer->isObjectNew(true);
-$customerDataModel = $customerRepository->save($customer->getDataModel(), $encryptor->hash('password'));
+$customerDataModel = $customerRepository->save($customer->getDataModel());
 $addressId = $customerDataModel->getAddresses()[0]->getId();
 $customerDataModel->setDefaultShipping($addressId);
 $customerDataModel->setDefaultBilling($addressId);

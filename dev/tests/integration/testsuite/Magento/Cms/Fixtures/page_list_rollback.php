@@ -16,18 +16,7 @@ $pageRepository = $objectManager->get(PageRepositoryInterface::class);
 
 /** @var SearchCriteriaBuilder $searchCriteriaBuilder */
 $searchCriteriaBuilder = $objectManager->get(SearchCriteriaBuilder::class);
-$searchCriteria = $searchCriteriaBuilder
-    ->addFilter(
-        'title',
-        [
-            'simplePage',
-            'simplePage01',
-            '01simplePage',
-            'Page with 1column layout',
-            'Page with unavailable layout',
-        ],
-        'in'
-    )
+$searchCriteria = $searchCriteriaBuilder->addFilter('title', ['simplePage', 'simplePage01', '01simplePage'], 'in')
     ->create();
 $result = $pageRepository->getList($searchCriteria);
 

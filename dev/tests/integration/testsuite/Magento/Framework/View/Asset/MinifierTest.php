@@ -5,29 +5,12 @@
  */
 namespace Magento\Framework\View\Asset;
 
-use Exception;
 use Magento\Deploy\Console\ConsoleLogger;
-use Magento\Deploy\Console\DeployStaticOptions as Options;
-use Magento\Deploy\Service\DeployStaticContent;
-use Magento\Deploy\Strategy\DeployStrategyFactory;
 use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\App\ObjectManagerFactory;
-use Magento\Framework\App\Request\Http;
-use Magento\Framework\App\Response\FileInterface;
-use Magento\Framework\App\State as AppState;
-use Magento\Framework\App\StaticResource;
-use Magento\Framework\App\Utility\Files;
-use Magento\Framework\App\View\Deployment\Version\StorageInterface;
-use Magento\Framework\Code\Minifier\AdapterInterface;
-use Magento\Framework\Exception\LocalizedException;
-use Magento\Framework\Filesystem;
-use Magento\Framework\Filesystem\Directory\WriteInterface;
-use Magento\TestFramework\App\State;
 use Magento\TestFramework\Helper\Bootstrap;
-use Magento\TestFramework\ObjectManager;
-use Magento\Theme\Model\Theme\Registration;
-use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Output\ConsoleOutput;
+use Magento\Framework\App\State as AppState;
+use Magento\Deploy\Console\DeployStaticOptions as Options;
+use Magento\Deploy\Strategy\DeployStrategyFactory;
 
 /**
  * Tests for minifier
@@ -36,15 +19,15 @@ use Symfony\Component\Console\Output\ConsoleOutput;
  * @magentoDbIsolation enabled
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class MinifierTest extends TestCase
+class MinifierTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var WriteInterface
+     * @var \Magento\Framework\Filesystem\Directory\WriteInterface
      */
     private $staticDir;
 
     /**
-     * @var ObjectManager
+     * @var \Magento\TestFramework\ObjectManager
      */
     protected $objectManager;
 
@@ -56,29 +39,31 @@ class MinifierTest extends TestCase
     /**
      * {@inheritDoc}
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
         $this->objectManager = Bootstrap::getInstance()->getObjectManager();
-        /** @var Registration $registration */
-        $registration = $this->objectManager->get(Registration::class);
+        /** @var \Magento\Theme\Model\Theme\Registration $registration */
+        $registration = $this->objectManager->get(
+            \Magento\Theme\Model\Theme\Registration::class
+        );
         $registration->register();
-        /** @var State $appState */
-        $appState = $this->objectManager->get(State::class);
+        /** @var \Magento\TestFramework\App\State $appState */
+        $appState = $this->objectManager->get(\Magento\TestFramework\App\State::class);
         $this->origMode = $appState->getMode();
         $appState->setMode(AppState::MODE_DEFAULT);
-        /** @var Filesystem $filesystem */
-        $filesystem = Bootstrap::getObjectManager()->get(Filesystem::class);
+        /** @var \Magento\Framework\Filesystem $filesystem */
+        $filesystem = Bootstrap::getObjectManager()->get(\Magento\Framework\Filesystem::class);
         $this->staticDir = $filesystem->getDirectoryWrite(DirectoryList::STATIC_VIEW);
     }
 
     /**
      * {@inheritDoc}
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
-        /** @var State $appState */
-        $appState = $this->objectManager->get(State::class);
+        /** @var \Magento\TestFramework\App\State $appState */
+        $appState = $this->objectManager->get(\Magento\TestFramework\App\State::class);
         $appState->setMode($this->origMode);
         if ($this->staticDir->isExist('frontend/FrameworkViewMinifier')) {
             $this->staticDir->delete('frontend/FrameworkViewMinifier');
@@ -98,7 +83,7 @@ class MinifierTest extends TestCase
      */
     public function testCSSminLibrary()
     {
-        /** @var AdapterInterface $adapter */
+        /** @var \Magento\Framework\Code\Minifier\AdapterInterface $adapter */
         $adapter = $this->objectManager->get('cssMinificationAdapter');
         $this->assertEquals(
             file_get_contents(dirname(__DIR__) . '/_files/static/expected/styles.magento.min.css'),
@@ -116,7 +101,7 @@ class MinifierTest extends TestCase
      */
     public function testJshrinkLibrary()
     {
-        /** @var AdapterInterface $adapter */
+        /** @var \Magento\Framework\Code\Minifier\AdapterInterface $adapter */
         $adapter = $this->objectManager->get('jsMinificationAdapter');
         $this->assertEquals(
             file_get_contents(dirname(__DIR__) . '/_files/static/expected/test.min.js'),
@@ -132,26 +117,26 @@ class MinifierTest extends TestCase
      *
      * @param string $requestedUri
      * @param callable $assertionCallback
-     * @throws LocalizedException|Exception
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
-    private function checkCssMinification(string $requestedUri, callable $assertionCallback): void
+    protected function _testCssMinification($requestedUri, $assertionCallback)
     {
-        /** @var Http $request */
-        $request = $this->objectManager->get(Http::class);
+        /** @var \Magento\Framework\App\Request\Http $request */
+        $request = $this->objectManager->get(\Magento\Framework\App\Request\Http::class);
         $request->setRequestUri($requestedUri);
         $request->setParam('resource', $requestedUri);
 
-        $response = $this->getMockBuilder(FileInterface::class)
+        $response = $this->getMockBuilder(\Magento\Framework\App\Response\FileInterface::class)
             ->setMethods(['setFilePath'])
             ->getMockForAbstractClass();
         $response
             ->expects($this->any())
             ->method('setFilePath')
-            ->willReturnCallback($assertionCallback);
+            ->will($this->returnCallback($assertionCallback));
 
-        /** @var StaticResource $staticResourceApp */
+        /** @var \Magento\Framework\App\StaticResource $staticResourceApp */
         $staticResourceApp = $this->objectManager->create(
-            StaticResource::class,
+            \Magento\Framework\App\StaticResource::class,
             ['response' => $response]
         );
         $staticResourceApp->launch();
@@ -163,12 +148,12 @@ class MinifierTest extends TestCase
      */
     public function testCssMinificationOff()
     {
-        $this->checkCssMinification(
+        $this->_testCssMinification(
             '/frontend/FrameworkViewMinifier/default/en_US/css/styles.css',
             function ($path) {
                 $content = file_get_contents($path);
                 $this->assertNotEmpty($content);
-                $this->assertStringContainsString('FrameworkViewMinifier/frontend', $content);
+                $this->assertContains('FrameworkViewMinifier/frontend', $content);
                 $this->assertNotEquals(
                     file_get_contents(
                         dirname(__DIR__)
@@ -186,7 +171,7 @@ class MinifierTest extends TestCase
      */
     public function testCssMinification()
     {
-        $this->checkCssMinification(
+        $this->_testCssMinification(
             '/frontend/FrameworkViewMinifier/default/en_US/css/styles.min.css',
             function ($path) {
                 $this->assertEquals(
@@ -206,13 +191,13 @@ class MinifierTest extends TestCase
      */
     public function testCssMinificationForMinifiedFiles()
     {
-        $this->checkCssMinification(
+        $this->_testCssMinification(
             '/frontend/FrameworkViewMinifier/default/en_US/css/preminified-styles.min.css',
             function ($path) {
                 $content = file_get_contents($path);
                 $this->assertNotEmpty($content);
-                $this->assertStringContainsString('Magento/backend', $content);
-                $this->assertStringContainsString('semi-minified file', $content);
+                $this->assertContains('Magento/backend', $content);
+                $this->assertContains('semi-minified file', $content);
             }
         );
     }
@@ -227,39 +212,47 @@ class MinifierTest extends TestCase
         $fileToBePublished = $staticPath . '/frontend/FrameworkViewMinifier/default/en_US/css/styles.min.css';
         $fileToTestPublishing = dirname(__DIR__) . '/_files/static/theme/web/css/styles.css';
 
-        $omFactory = $this->createPartialMock(ObjectManagerFactory::class, ['create']);
+        $omFactory = $this->createPartialMock(\Magento\Framework\App\ObjectManagerFactory::class, ['create']);
         $omFactory->expects($this->any())
             ->method('create')
-            ->willReturn($this->objectManager);
+            ->will($this->returnValue($this->objectManager));
 
-        $filesUtil = $this->createMock(Files::class);
+        $filesUtil = $this->createMock(\Magento\Framework\App\Utility\Files::class);
         $filesUtil->expects($this->any())
             ->method('getStaticLibraryFiles')
-            ->willReturn([]);
+            ->will($this->returnValue([]));
 
         $filesUtil->expects($this->any())
             ->method('getPhtmlFiles')
-            ->willReturn([]);
+            ->will($this->returnValue([]));
 
         $filesUtil->expects($this->any())
             ->method('getStaticPreProcessingFiles')
-            ->willReturn(
+            ->will($this->returnValue(
                 [
                     ['frontend', 'FrameworkViewMinifier/default', '', '', 'css/styles.css', $fileToTestPublishing]
                 ]
-            );
+            ));
 
-        $this->objectManager->addSharedInstance($filesUtil, Files::class);
+        $this->objectManager->addSharedInstance($filesUtil, \Magento\Framework\App\Utility\Files::class);
 
-        $output = $this->objectManager->create(ConsoleOutput::class);
+        $output = $this->objectManager->create(
+            \Symfony\Component\Console\Output\ConsoleOutput::class
+        );
 
-        $logger = $this->objectManager->create(ConsoleLogger::class, ['output' => $output]);
+        $logger = $this->objectManager->create(
+            ConsoleLogger::class,
+            ['output' => $output]
+        );
 
-        $versionStorage = $this->createPartialMock(StorageInterface::class, ['save', 'load']);
+        $versionStorage = $this->createPartialMock(
+            \Magento\Framework\App\View\Deployment\Version\StorageInterface::class,
+            ['save', 'load']
+        );
 
-        /** @var DeployStaticContent $deployService */
+        /** @var \Magento\Deploy\Service\DeployStaticContent $deployService */
         $deployService = $this->objectManager->create(
-            DeployStaticContent::class,
+            \Magento\Deploy\Service\DeployStaticContent::class,
             [
                 'objectManager' => $this->objectManager,
                 'logger' => $logger,
@@ -286,8 +279,7 @@ class MinifierTest extends TestCase
                 Options::EXCLUDE_LANGUAGE => ['none'],
                 Options::JOBS_AMOUNT => 0,
                 Options::SYMLINK_LOCALE => false,
-                Options::STRATEGY => DeployStrategyFactory::DEPLOY_STRATEGY_QUICK,
-                Options::NO_PARENT => false,
+                Options::STRATEGY => DeployStrategyFactory::DEPLOY_STRATEGY_QUICK
             ]
         );
 

@@ -20,7 +20,7 @@ class SwatchAttributeOptionAddTest extends \PHPUnit\Framework\TestCase
      */
     private $objectManager;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
     }
@@ -40,7 +40,7 @@ class SwatchAttributeOptionAddTest extends \PHPUnit\Framework\TestCase
 
         $data['options']['option'] = array_reduce(
             range(10, $optionsPerAttribute),
-            function ($values, $index) {
+            function ($values, $index) use ($optionsPerAttribute) {
                 $values[] = [
                     'label' => 'option ' . $index,
                     'value' => 'option_' . $index

@@ -48,7 +48,7 @@ class ProductViewTest extends GraphQlAbstract
      */
     private $storeManager;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
         $this->productRepository = $this->objectManager->get(ProductRepositoryInterface::class);
@@ -89,7 +89,7 @@ class ProductViewTest extends GraphQlAbstract
         $scopeConfig->clean();
     }
 
-    protected function tearDown(): void
+    public function tearDown()
     {
         /** @var \Magento\Config\Model\ResourceModel\Config $config */
         $config = $this->objectManager->get(\Magento\Config\Model\ResourceModel\Config::class);
@@ -144,6 +144,8 @@ class ProductViewTest extends GraphQlAbstract
     products(filter: {sku: {eq: "{$productSku}"}})
     {
         items {
+            attribute_set_id
+            created_at
             id
             name
             price {
@@ -192,6 +194,7 @@ class ProductViewTest extends GraphQlAbstract
             }
             sku
             type_id
+            updated_at
             ... on PhysicalProductInterface {
                 weight
             }
@@ -206,7 +209,7 @@ QUERY;
         $product = $this->productRepository->get($productSku, false, null, true);
         $this->assertArrayHasKey('products', $response);
         $this->assertArrayHasKey('items', $response['products']);
-        $this->assertCount(1, $response['products']['items']);
+        $this->assertEquals(1, count($response['products']['items']));
         $this->assertArrayHasKey(0, $response['products']['items']);
         $this->assertBaseFields($product, $response['products']['items'][0]);
     }
@@ -278,6 +281,8 @@ QUERY;
         }
         // product_object_field_name, expected_value
         $assertionMap = [
+            ['response_field' => 'attribute_set_id', 'expected_value' => $product->getAttributeSetId()],
+            ['response_field' => 'created_at', 'expected_value' => $product->getCreatedAt()],
             ['response_field' => 'id', 'expected_value' => $product->getId()],
             ['response_field' => 'name', 'expected_value' => $product->getName()],
             ['response_field' => 'price', 'expected_value' =>
@@ -340,6 +345,7 @@ QUERY;
             ],
             ['response_field' => 'sku', 'expected_value' => $product->getSku()],
             ['response_field' => 'type_id', 'expected_value' => $product->getTypeId()],
+            ['response_field' => 'updated_at', 'expected_value' => $product->getUpdatedAt()],
             ['response_field' => 'weight', 'expected_value' => $product->getWeight()],
         ];
 

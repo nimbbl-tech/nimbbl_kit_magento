@@ -54,3 +54,10 @@ $installer->addAttributeToGroup(
     'General',
     $selectAttribute->getId()
 );
+
+/** @var \Magento\Eav\Model\ResourceModel\Entity\Attribute\Option\Collection $selectOptions */
+$selectOptions = $objectManager->create(
+    \Magento\Eav\Model\ResourceModel\Entity\Attribute\Option\Collection::class
+);
+$selectOptions->setAttributeFilter($selectAttribute->getId());
+$selectOptionsIds = $selectOptions->getAllIds();

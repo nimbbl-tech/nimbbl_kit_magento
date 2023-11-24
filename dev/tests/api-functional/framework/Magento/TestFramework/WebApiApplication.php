@@ -13,7 +13,7 @@ namespace Magento\TestFramework;
 class WebApiApplication extends Application
 {
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function run()
     {
@@ -24,7 +24,7 @@ class WebApiApplication extends Application
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function install($cleanup)
     {
@@ -45,18 +45,19 @@ class WebApiApplication extends Application
                     }
                     continue;
                 }
-                $installCmd .= " --$optionName=%s";
-                $installArgs[] = $optionValue;
+                if (!empty($optionValue)) {
+                    $installCmd .= " --$optionName=%s";
+                    $installArgs[] = $optionValue;
+                }
             }
             $this->_shell->execute($installCmd, $installArgs);
         }
     }
 
     /**
-     * @inheritdoc
+     * Use the application as is
      *
-     * Return empty array of custom directories
-     * @return array
+     * {@inheritdoc}
      */
     protected function getCustomDirs()
     {

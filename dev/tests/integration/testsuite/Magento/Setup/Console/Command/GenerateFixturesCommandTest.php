@@ -16,8 +16,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Class GenerateFixturesCommandCommandTest
- *
- * @magentoDbIsolation disabled
+ * @package Magento\Setup\Console\Command
  */
 class GenerateFixturesCommandTest extends \Magento\TestFramework\Indexer\TestCase
 {
@@ -39,7 +38,7 @@ class GenerateFixturesCommandTest extends \Magento\TestFramework\Indexer\TestCas
     /**
      * Setup
      */
-    protected function setUp(): void
+    public function setUp()
     {
         $this->objectManager = Bootstrap::getObjectManager();
 
@@ -81,19 +80,24 @@ class GenerateFixturesCommandTest extends \Magento\TestFramework\Indexer\TestCas
     }
 
     /**
+     * @return string
+     */
+    private function getEdition()
+    {
+        return trim(file_get_contents(__DIR__  . '/_files/edition'));
+    }
+
+    /**
      * teardown
      */
-    protected function tearDown(): void
+    public function tearDown()
     {
         $this->setIncrement(1);
-
-        self::restoreFromDb();
-        self::$dbRestored = true;
 
         parent::tearDown();
     }
 
-    public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass()
     {
         $db = Bootstrap::getInstance()->getBootstrap()
             ->getApplication()
@@ -112,7 +116,7 @@ class GenerateFixturesCommandTest extends \Magento\TestFramework\Indexer\TestCas
      */
     public function testExecute()
     {
-        $profile = realpath(__DIR__ . "/_files/min_profile.xml");
+        $profile = BP . "/setup/performance-toolkit/profiles/{$this->getEdition()}/small.xml";
         $this->commandTester->execute(
             [
                 GenerateFixturesCommand::PROFILE_ARGUMENT => $profile,

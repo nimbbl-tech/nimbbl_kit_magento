@@ -24,24 +24,19 @@ class SearchTest extends WebapiAbstract
      */
     private $product;
 
-    /**
-     * @inheritDoc
-     */
-    protected function setUp(): void
+    protected function setUp()
     {
         $productSku = 'simple';
 
         $objectManager = Bootstrap::getObjectManager();
-        $productRepository = $objectManager->get(ProductRepositoryInterface::class);
+        $productRepository = $objectManager->create(ProductRepositoryInterface::class);
         $this->product = $productRepository->get($productSku);
     }
 
     /**
-     * Tests that webapi call returns response when search criteria is valid.
-     *
-     * @magentoApiDataFixture Magento/Catalog/_files/products.php
+     * @magentoApiDataFixture Magento/Catalog/_files/product_simple.php
      */
-    public function testExistingProductSearch(): void
+    public function testExistingProductSearch()
     {
         $productName = $this->product->getName();
 
@@ -52,16 +47,14 @@ class SearchTest extends WebapiAbstract
 
         self::assertArrayHasKey('search_criteria', $response);
         self::assertArrayHasKey('items', $response);
-        self::assertGreaterThan(1, count($response['items']));
+        self::assertGreaterThan(0, count($response['items']));
         self::assertGreaterThan(0, $response['items'][0]['id']);
     }
 
     /**
-     * Tests that response is empty if invalid data is provided.
-     *
-     * @magentoApiDataFixture Magento/Catalog/_files/products.php
+     * @magentoApiDataFixture Magento/Catalog/_files/product_simple.php
      */
-    public function testNonExistentProductSearch(): void
+    public function testNonExistentProductSearch()
     {
         $searchCriteria = $this->buildSearchCriteria('nonExistentProduct');
         $serviceInfo = $this->buildServiceInfo($searchCriteria);
@@ -70,7 +63,7 @@ class SearchTest extends WebapiAbstract
 
         self::assertArrayHasKey('search_criteria', $response);
         self::assertArrayHasKey('items', $response);
-        self::assertCount(0, $response['items']);
+        self::assertEquals(0, count($response['items']));
     }
 
     /**

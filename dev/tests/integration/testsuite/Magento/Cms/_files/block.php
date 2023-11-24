@@ -3,22 +3,9 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
 
-use Magento\Cms\Api\BlockRepositoryInterface;
-use Magento\Cms\Model\Block;
-use Magento\Store\Model\StoreManagerInterface;
-use Magento\TestFramework\Helper\Bootstrap;
-
-$objectManager = Bootstrap::getObjectManager();
-
-/**
- * @var $block Block
- * @var $blockRepository BlockRepositoryInterface
- */
-$block = $objectManager->create(Block::class);
-$blockRepository = $objectManager->create(BlockRepositoryInterface::class);
-
+/** @var $block \Magento\Cms\Model\Block */
+$block = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(\Magento\Cms\Model\Block::class);
 $block->setTitle(
     'CMS Block Title'
 )->setIdentifier(
@@ -33,10 +20,8 @@ $block->setTitle(
     1
 )->setStores(
     [
-        Bootstrap::getObjectManager()->get(
-            StoreManagerInterface::class
+        \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(
+            \Magento\Store\Model\StoreManagerInterface::class
         )->getStore()->getId()
     ]
-);
-
-$blockRepository->save($block);
+)->save();

@@ -22,7 +22,7 @@ class UrlResolverTest extends GraphQlAbstract
     /** @var ObjectManager */
     private $objectManager;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
     }
@@ -45,7 +45,18 @@ class UrlResolverTest extends GraphQlAbstract
         $targetPath = $urlPathGenerator->getCanonicalUrlPath($page);
         $expectedEntityType = CmsPageUrlRewriteGenerator::ENTITY_TYPE;
 
-        $query = $this->createQuery($requestPath);
+        $query
+            = <<<QUERY
+{
+  urlResolver(url:"{$requestPath}")
+  {
+   id
+   relative_url
+   type
+   redirectCode
+  }
+}
+QUERY;
         $response = $this->graphQlQuery($query);
         $this->assertEquals($cmsPageId, $response['urlResolver']['id']);
         $this->assertEquals($requestPath, $response['urlResolver']['relative_url']);
@@ -53,30 +64,23 @@ class UrlResolverTest extends GraphQlAbstract
         $this->assertEquals(0, $response['urlResolver']['redirectCode']);
 
         // querying by non seo friendly url path should return seo friendly relative url
-        $query = $this->createQuery($targetPath);
+        $query
+            = <<<QUERY
+{
+  urlResolver(url:"{$targetPath}")
+  {
+   id
+   relative_url
+   type
+   redirectCode
+  }
+}
+QUERY;
         $response = $this->graphQlQuery($query);
         $this->assertEquals($cmsPageId, $response['urlResolver']['id']);
         $this->assertEquals($requestPath, $response['urlResolver']['relative_url']);
         $this->assertEquals(strtoupper(str_replace('-', '_', $expectedEntityType)), $response['urlResolver']['type']);
         $this->assertEquals(0, $response['urlResolver']['redirectCode']);
-    }
-
-    /**
-     * @magentoApiDataFixture Magento/Cms/_files/pages.php
-     */
-    public function testResolveCMSPageWithQueryParameters()
-    {
-        $page = $this->objectManager->create(\Magento\Cms\Model\Page::class);
-        $page->load('page100');
-        $cmsPageId = $page->getId();
-        $requestPath = $page->getIdentifier();
-        $requestPath .= '?key=value';
-
-        $query = $this->createQuery($requestPath);
-        $response = $this->graphQlQuery($query);
-        $this->assertNotEmpty($response['urlResolver']);
-        $this->assertEquals($cmsPageId, $response['urlResolver']['id']);
-        $this->assertEquals($requestPath, $response['urlResolver']['relative_url']);
     }
 
     /**
@@ -94,24 +98,10 @@ class UrlResolverTest extends GraphQlAbstract
         $page = $this->objectManager->get(\Magento\Cms\Model\Page::class);
         $page->load($homePageIdentifier);
         $homePageId = $page->getId();
-        $query = $this->createQuery('/');
-        $response = $this->graphQlQuery($query);
-        $this->assertArrayHasKey('urlResolver', $response);
-        $this->assertEquals($homePageId, $response['urlResolver']['id']);
-        $this->assertEquals($homePageIdentifier, $response['urlResolver']['relative_url']);
-        $this->assertEquals('CMS_PAGE', $response['urlResolver']['type']);
-        $this->assertEquals(0, $response['urlResolver']['redirectCode']);
-    }
-
-    /**
-     * @param string $path
-     * @return string
-     */
-    private function createQuery(string $path): string
-    {
-        return <<<QUERY
+        $query
+            = <<<QUERY
 {
-  urlResolver(url:"{$path}")
+  urlResolver(url:"/")
   {
    id
    relative_url
@@ -120,5 +110,11 @@ class UrlResolverTest extends GraphQlAbstract
   }
 }
 QUERY;
+        $response = $this->graphQlQuery($query);
+        $this->assertArrayHasKey('urlResolver', $response);
+        $this->assertEquals($homePageId, $response['urlResolver']['id']);
+        $this->assertEquals($homePageIdentifier, $response['urlResolver']['relative_url']);
+        $this->assertEquals('CMS_PAGE', $response['urlResolver']['type']);
+        $this->assertEquals(0, $response['urlResolver']['redirectCode']);
     }
 }

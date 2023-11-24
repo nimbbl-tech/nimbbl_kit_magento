@@ -28,7 +28,7 @@ class ProcessorTest extends \PHPUnit\Framework\TestCase
      */
     protected static $_mediaDir;
 
-    public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass()
     {
         $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
         /** @var \Magento\Framework\Filesystem\Directory\WriteInterface $mediaDirectory */
@@ -46,13 +46,12 @@ class ProcessorTest extends \PHPUnit\Framework\TestCase
         $mediaDirectory->create($config->getBaseTmpMediaPath());
         $mediaDirectory->create($config->getBaseMediaPath());
 
-        $mediaDirectory->getDriver()->filePutContents(self::$_mediaTmpDir . "/magento_image.jpg", file_get_contents($fixtureDir . "/magento_image.jpg"));
-        $mediaDirectory->getDriver()->filePutContents(self::$_mediaDir . "/magento_image.jpg", file_get_contents($fixtureDir . "/magento_image.jpg"));
-        $mediaDirectory->getDriver()->filePutContents(self::$_mediaTmpDir . "/magento_small_image.jpg", file_get_contents($fixtureDir . "/magento_small_image.jpg"));
-
+        copy($fixtureDir . "/magento_image.jpg", self::$_mediaTmpDir . "/magento_image.jpg");
+        copy($fixtureDir . "/magento_image.jpg", self::$_mediaDir . "/magento_image.jpg");
+        copy($fixtureDir . "/magento_small_image.jpg", self::$_mediaTmpDir . "/magento_small_image.jpg");
     }
 
-    public static function tearDownAfterClass(): void
+    public static function tearDownAfterClass()
     {
         $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
         /** @var \Magento\Catalog\Model\Product\Media\Config $config */
@@ -73,7 +72,7 @@ class ProcessorTest extends \PHPUnit\Framework\TestCase
         }
     }
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->_model = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
             \Magento\Catalog\Model\Product\Gallery\Processor::class

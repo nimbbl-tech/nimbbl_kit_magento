@@ -8,10 +8,11 @@ declare(strict_types=1);
 
 namespace Magento\Framework\App\Filesystem;
 
+use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\Response\Http\FileFactory;
 use Magento\Framework\Filesystem;
 use Magento\TestFramework\Helper\Bootstrap;
-use Laminas\Http\Header\ContentType;
+use Zend\Http\Header\ContentType;
 
 /**
  * Class CreatePdfFileTest

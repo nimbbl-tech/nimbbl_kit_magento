@@ -6,9 +6,8 @@
 declare(strict_types=1);
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\TestFramework\Workaround\Override\Fixture\Resolver;
 
-Resolver::getInstance()->requireDataFixture('Magento/Sales/_files/address_list.php');
+require __DIR__ . '/address_list.php';
 
 \Magento\TestFramework\Helper\Bootstrap::getInstance()->loadArea(\Magento\Framework\App\Area::AREA_FRONTEND);
 
@@ -37,18 +36,7 @@ $product->setTypeId('simple')
     )->save();
 $product = $productRepository->get('simple-product-guest-quote');
 
-$addressData = [
-    'telephone' => 3234676,
-    'postcode' => 47676,
-    'country_id' => 'DE',
-    'city' => 'CityX',
-    'street' => ['Black str, 48'],
-    'lastname' => 'Smith',
-    'firstname' => 'John',
-    'vat_id' => 12345,
-    'address_type' => 'shipping',
-    'email' => 'some_email@mail.com',
-];
+$addressData = reset($addresses);
 
 $billingAddress = $objectManager->create(
     \Magento\Quote\Model\Quote\Address::class,
@@ -66,7 +54,6 @@ $quote = $objectManager->create(\Magento\Quote\Model\Quote::class);
 $quote->setCustomerIsGuest(true)
     ->setStoreId($store->getId())
     ->setReservedOrderId('guest_quote')
-    ->setCheckoutMethod('guest')
     ->setBillingAddress($billingAddress)
     ->setShippingAddress($shippingAddress)
     ->addProduct($product);

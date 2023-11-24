@@ -10,7 +10,6 @@ use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\UrlRewrite\Model\UrlRewrite;
-use Magento\TestFramework\Workaround\Override\Fixture\Resolver;
 
 $objectManager = Bootstrap::getObjectManager();
 /** @var \Magento\Framework\Registry $registry */
@@ -46,10 +45,8 @@ foreach ($categories as $category) {
 $urlRewrite = $objectManager->create(UrlRewrite::class);
 $urlRewrite->load('non-exist-product.html', 'request_path');
 $urlRewrite->delete();
-$urlRewrite->load('.html', 'request_path');
-$urlRewrite->delete();
 
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', false);
 
-Resolver::getInstance()->requireDataFixture('Magento/Store/_files/store_rollback.php');
+require __DIR__ . '/../../Store/_files/store_rollback.php';

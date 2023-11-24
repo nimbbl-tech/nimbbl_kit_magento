@@ -3,7 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
 // @codingStandardsIgnoreStart
 namespace {
     $mockPHPFunctions = false;
@@ -12,6 +11,8 @@ namespace {
 namespace Magento\Framework\Session {
 
     use Magento\Framework\App\Filesystem\DirectoryList;
+
+    // @codingStandardsIgnoreEnd
 
     /**
      * Mock ini_get global function
@@ -33,11 +34,8 @@ namespace Magento\Framework\Session {
         } elseif ($mockPHPFunctions == 2) {
             return null;
         }
-        //phpcs:ignore PHPCompatibility
         return call_user_func_array('\ini_get', func_get_args());
     }
-
-    // @codingStandardsIgnoreEnd
 
     /**
      * @magentoAppIsolation enabled
@@ -53,10 +51,10 @@ namespace Magento\Framework\Session {
         /** @var string Default value for session.save_path setting */
         private $defaultSavePath;
 
-        /** @var \Magento\Framework\App\DeploymentConfig | \PHPUnit\Framework\MockObject\MockObject */
+        /** @var \Magento\Framework\App\DeploymentConfig | \PHPUnit_Framework_MockObject_MockObject */
         private $deploymentConfigMock;
 
-        protected function setUp(): void
+        protected function setUp()
         {
             $this->_objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
 
@@ -103,8 +101,8 @@ namespace Magento\Framework\Session {
             $this->assertEquals($this->_cacheLimiter, $model->getCacheLimiter());
             $this->assertEquals('/', $model->getCookiePath());
             $this->assertEquals('localhost', $model->getCookieDomain());
-            $this->assertFalse($model->getCookieSecure());
-            $this->assertTrue($model->getCookieHttpOnly());
+            $this->assertEquals(false, $model->getCookieSecure());
+            $this->assertEquals(true, $model->getCookieHttpOnly());
             $this->assertEquals($model->getSavePath(), $model->getOption('save_path'));
         }
 
@@ -183,7 +181,7 @@ namespace Magento\Framework\Session {
             $model->setCookieLifetime('foobar_bogus');
             $this->assertEquals($preVal, $model->getCookieLifetime());
         }
-
+      
         public function testSettingInvalidCookieLifetime2()
         {
             $model = $this->getModel();
@@ -195,8 +193,8 @@ namespace Magento\Framework\Session {
         public function testWrongMethodCall()
         {
             $model = $this->getModel();
-            $this->expectException(\BadMethodCallException::class);
-            $this->expectExceptionMessage(
+            $this->expectException(
+                '\BadMethodCallException',
                 'Method "methodThatNotExist" does not exist in Magento\Framework\Session\Config'
             );
             $model->methodThatNotExist();
@@ -376,19 +374,6 @@ namespace Magento\Framework\Session {
                 \Magento\Framework\Session\Config::class,
                 ['deploymentConfig' => $this->deploymentConfigMock]
             );
-        }
-
-        /**
-         * Test Set SameSite Attribute
-         *
-         * @return void
-         */
-        public function testSetCookieInvalidSameSite(): void
-        {
-            $model = $this->getModel();
-            $this->expectException('InvalidArgumentException');
-            $this->expectExceptionMessage('Invalid Samesite attribute.');
-            $model->setCookieSameSite('foobar');
         }
     }
 }

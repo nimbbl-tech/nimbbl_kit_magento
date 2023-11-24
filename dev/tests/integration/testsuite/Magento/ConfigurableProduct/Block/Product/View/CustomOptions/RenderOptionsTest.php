@@ -12,6 +12,7 @@ use Magento\Catalog\Block\Product\View\Options\AbstractRenderCustomOptionsTest;
 /**
  * Test cases related to check that configurable product custom option renders as expected.
  *
+ * @magentoDbIsolation disabled
  * @magentoAppArea frontend
  */
 class RenderOptionsTest extends AbstractRenderCustomOptionsTest
@@ -91,21 +92,5 @@ class RenderOptionsTest extends AbstractRenderCustomOptionsTest
             'catalog_product_view',
             'catalog_product_view_type_configurable',
         ];
-    }
-
-    /**
-     * @inheritdoc
-     */
-    protected function getMaxCharactersCssClass(): string
-    {
-        return 'class="character-counter';
-    }
-
-    /**
-     * @inheritdoc
-     */
-    protected function getOptionsBlockName(): string
-    {
-        return 'product.info.options';
     }
 }

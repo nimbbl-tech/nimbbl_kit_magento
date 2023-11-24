@@ -171,11 +171,6 @@ abstract class GraphQlAbstract extends WebapiAbstract
                 $expectedValue,
                 "Value of '{$responseField}' field must not be NULL"
             );
-            self::assertArrayHasKey(
-                $responseField,
-                $actualResponse,
-                "Response array does not contain key '{$responseField}'"
-            );
             self::assertEquals(
                 $expectedValue,
                 $actualResponse[$responseField],

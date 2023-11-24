@@ -46,8 +46,6 @@ class StaticProperties
         \Magento\TestFramework\Annotation\AppIsolation::class,
         \Magento\TestFramework\Workaround\Cleanup\StaticProperties::class,
         \Magento\Framework\Phrase::class,
-        \Magento\TestFramework\Workaround\Override\Fixture\ResolverInterface::class,
-        \Magento\TestFramework\Workaround\Override\ConfigInterface::class,
     ];
 
     private const CACHE_NAME = 'integration_test_static_properties';
@@ -81,7 +79,7 @@ class StaticProperties
      */
     protected static function _isClassCleanable(\ReflectionClass $reflectionClass)
     {
-        // do not process skipped classes from integration framework
+        // do not process blacklisted classes from integration framework
         foreach (self::$_classesToSkip as $notCleanableClass) {
             if ($reflectionClass->getName() == $notCleanableClass || is_subclass_of(
                 $reflectionClass->getName(),
@@ -170,7 +168,7 @@ class StaticProperties
 
         $objectManager = Bootstrap::getInstance()->getObjectManager();
         $cache = $objectManager->get(CacheInterface::class);
-        $serializer = $objectManager->get(\Magento\TestFramework\Serialize\Serializer::class);
+        $serializer = $objectManager->get(SerializerInterface::class);
         $cachedProperties = $cache->load(self::CACHE_NAME);
 
         if ($cachedProperties) {
@@ -187,10 +185,9 @@ class StaticProperties
                 | Files::INCLUDE_TESTS
             ),
             function ($classFile) {
-                return strpos($classFile, 'TestFramework')  === -1
-                    && StaticProperties::_isClassInCleanableFolders($classFile)
-                    // phpcs:ignore Magento2.Functions.DiscouragedFunction
-                    && strpos(file_get_contents($classFile), ' static ')  > 0;
+                return StaticProperties::_isClassInCleanableFolders($classFile)
+                // phpcs:ignore Magento2.Functions.DiscouragedFunction
+                && strpos(file_get_contents($classFile), ' static ')  > 0;
             }
         );
         $namespacePattern = '/namespace [a-zA-Z0-9\\\\]+;/';

@@ -19,7 +19,7 @@ class TemplateTest extends \PHPUnit\Framework\TestCase
      */
     protected $_model = null;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->_model = Bootstrap::getObjectManager()->create(
             \Magento\Newsletter\Model\Template::class
@@ -147,7 +147,6 @@ class TemplateTest extends \PHPUnit\Framework\TestCase
         $this->_model->setTemplateType(TemplateTypesInterface::TYPE_HTML);
         $templateText = '{{var store.isSaveAllowed()}} - {{template config_path="foobar"}}';
         $this->_model->setTemplateText($templateText);
-        $this->_model->setTemplateId('abc');
 
         $template = $objectManager->create(\Magento\Email\Model\Template::class);
         $templateData = [
@@ -185,7 +184,6 @@ class TemplateTest extends \PHPUnit\Framework\TestCase
         $this->_model->setTemplateType(TemplateTypesInterface::TYPE_HTML);
         $templateText = '{{var store.isSaveAllowed()}} - {{template config_path="foobar"}}';
         $this->_model->setTemplateText($templateText);
-        $this->_model->setTemplateId('abc');
 
         $template = $objectManager->create(\Magento\Email\Model\Template::class);
         $templateData = [

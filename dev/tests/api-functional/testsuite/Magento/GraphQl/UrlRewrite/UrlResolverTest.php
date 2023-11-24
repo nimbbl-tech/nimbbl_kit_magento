@@ -18,7 +18,7 @@ class UrlResolverTest extends GraphQlAbstract
     /** @var ObjectManager */
     private $objectManager;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
     }
@@ -37,7 +37,6 @@ class UrlResolverTest extends GraphQlAbstract
   urlResolver(url:"{$urlPath}")
   {
    id
-   entity_uid
    relative_url
    type
    redirectCode

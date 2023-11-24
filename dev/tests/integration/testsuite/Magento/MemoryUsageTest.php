@@ -17,7 +17,7 @@ class MemoryUsageTest extends \PHPUnit\Framework\TestCase
      */
     protected $_helper;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         if (defined('HHVM_VERSION')) {
             $this->markTestSkipped("Test not relevant because no gc in HHVM.");
@@ -32,7 +32,7 @@ class MemoryUsageTest extends \PHPUnit\Framework\TestCase
      */
     public function testAppReinitializationNoMemoryLeak()
     {
-        $this->markTestSkipped('Skipped until MAGETWO-47111');
+        $this->markTestSkipped('Test fails at Travis. Skipped until MAGETWO-47111');
 
         $this->_deallocateUnusedMemory();
         $actualMemoryUsage = $this->_helper->getRealMemoryUsage();

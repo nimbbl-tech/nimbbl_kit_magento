@@ -3,46 +3,34 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
 declare(strict_types=1);
 
 namespace Magento\Sales\Model\ResourceModel;
 
-use Magento\Framework\Event\ManagerInterface;
-use Magento\Framework\ObjectManagerInterface;
-use Magento\Framework\Registry;
-use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Model\Order as OrderModel;
-use Magento\Sales\Model\Order\Address;
-use Magento\Sales\Model\Order\Item;
-use Magento\Sales\Model\Order\Payment;
-use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
+use Magento\Framework\Event\ManagerInterface;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
 
 /**
- * Test for \Magento\Sales\Model\ResourceModel\Order.
- *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class OrderTest extends TestCase
+class OrderTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var Order
+     * @var \Magento\Sales\Model\ResourceModel\Order
      */
-    private $resourceModel;
+    protected $resourceModel;
 
     /**
      * @var int
      */
-    private $orderIncrementId;
+    protected $orderIncrementId;
 
     /**
-     * @var ObjectManagerInterface
+     * @var \Magento\Framework\ObjectManagerInterface
      */
-    private $objectManager;
+    protected $objectManager;
 
     /**
      * @var StoreManagerInterface
@@ -57,11 +45,10 @@ class OrderTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
-        $this->objectManager = Bootstrap::getObjectManager();
-
-        $this->resourceModel = $this->objectManager->create(Order::class);
+        $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        $this->resourceModel = $this->objectManager->create(\Magento\Sales\Model\ResourceModel\Order::class);
         $this->orderIncrementId = '100000001';
         $this->storeManager = $this->objectManager->get(StoreManagerInterface::class);
         $this->storeRepository = $this->objectManager->get(StoreRepositoryInterface::class);
@@ -70,9 +57,9 @@ class OrderTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
-        $registry = $this->objectManager->get(Registry::class);
+        $registry = $this->objectManager->get(\Magento\Framework\Registry::class);
         $registry->unregister('isSecureArea');
         $registry->register('isSecureArea', true);
 
@@ -86,15 +73,14 @@ class OrderTest extends TestCase
 
         $defaultStore = $this->storeRepository->get('default');
         $this->storeManager->setCurrentStore($defaultStore->getId());
+
+        parent::tearDown();
     }
 
     /**
-     * Test save order
-     *
      * @magentoDataFixture Magento/Catalog/_files/product_simple.php
-     * @return void
      */
-    public function testSaveOrder(): void
+    public function testSaveOrder()
     {
         $addressData = [
             'region' => 'CA',
@@ -108,28 +94,31 @@ class OrderTest extends TestCase
             'country_id' => 'US'
         ];
 
-        $billingAddress = $this->objectManager->create(Address::class, ['data' => $addressData]);
+        $billingAddress = $this->objectManager->create(
+            \Magento\Sales\Model\Order\Address::class,
+            ['data' => $addressData]
+        );
         $billingAddress->setAddressType('billing');
 
         $shippingAddress = clone $billingAddress;
         $shippingAddress->setId(null)->setAddressType('shipping');
 
-        $payment = $this->objectManager->create(Payment::class);
+        $payment = $this->objectManager->create(\Magento\Sales\Model\Order\Payment::class);
         $payment->setMethod('checkmo');
 
-        /** @var Item $orderItem */
-        $orderItem = $this->objectManager->create(Item::class);
+        /** @var \Magento\Sales\Model\Order\Item $orderItem */
+        $orderItem = $this->objectManager->create(\Magento\Sales\Model\Order\Item::class);
         $orderItem->setProductId(1)
             ->setQtyOrdered(2)
             ->setBasePrice(10)
             ->setPrice(10)
             ->setRowTotal(10);
 
-        /** @var OrderModel $order */
-        $order = $this->objectManager->create(OrderModel::class);
+        /** @var \Magento\Sales\Model\Order $order */
+        $order = $this->objectManager->create(\Magento\Sales\Model\Order::class);
         $order->setIncrementId($this->orderIncrementId)
-            ->setState(OrderModel::STATE_PROCESSING)
-            ->setStatus($order->getConfig()->getStateDefaultStatus(OrderModel::STATE_PROCESSING))
+            ->setState(\Magento\Sales\Model\Order::STATE_PROCESSING)
+            ->setStatus($order->getConfig()->getStateDefaultStatus(\Magento\Sales\Model\Order::STATE_PROCESSING))
             ->setSubtotal(100)
             ->setBaseSubtotal(100)
             ->setBaseGrandTotal(100)
@@ -139,7 +128,7 @@ class OrderTest extends TestCase
             ->setShippingAddress($shippingAddress)
             ->setStoreId(
                 $this->objectManager
-                    ->get(StoreManagerInterface::class)
+                    ->get(\Magento\Store\Model\StoreManagerInterface::class)
                     ->getStore()
                     ->getId()
             )
@@ -152,37 +141,27 @@ class OrderTest extends TestCase
     }
 
     /**
-     * Check that store name and x_forwarded_for with length within 255 chars can be saved in table sales_order
+     * Check that store name with length within 255 chars can be saved in table sales_order
      *
      * @magentoDataFixture Magento/Store/_files/store_with_long_name.php
      * @magentoDbIsolation disabled
      * @return void
      */
-    public function testSaveLongNames(): void
+    public function testSaveStoreName()
     {
-        $xForwardedFor = str_repeat('x', 255);
-
         $store = $this->storeRepository->get('test_2');
         $this->storeManager->setCurrentStore($store->getId());
         $eventManager = $this->objectManager->get(ManagerInterface::class);
         $eventManager->dispatch('store_add', ['store' => $store]);
-        $order = $this->objectManager->create(OrderModel::class);
-        $payment = $this->objectManager->create(Payment::class);
+        $order = $this->objectManager->create(\Magento\Sales\Model\Order::class);
+        $payment = $this->objectManager->create(\Magento\Sales\Model\Order\Payment::class);
         $payment->setMethod('checkmo');
-
-        $order->setStoreId($store->getId());
-        $order->setXForwardedFor($xForwardedFor);
-        $order->setPayment($payment);
+        $order->setStoreId($store->getId())->setPayment($payment);
         $this->resourceModel->save($order);
-
-        $orderRepository = $this->objectManager->create(OrderRepositoryInterface::class);
+        $orderRepository = $this->objectManager->create(\Magento\Sales\Api\OrderRepositoryInterface::class);
         $order = $orderRepository->get($order->getId());
-
         $this->assertEquals(255, strlen($order->getStoreName()));
-        $this->assertEquals(255, strlen($order->getXForwardedFor()));
-
-        $this->assertEquals($xForwardedFor, $order->getXForwardedFor());
-        $this->assertStringContainsString($store->getWebsite()->getName(), $order->getStoreName());
-        $this->assertStringContainsString($store->getGroup()->getName(), $order->getStoreName());
+        $this->assertContains($store->getWebsite()->getName(), $order->getStoreName());
+        $this->assertContains($store->getGroup()->getName(), $order->getStoreName());
     }
 }

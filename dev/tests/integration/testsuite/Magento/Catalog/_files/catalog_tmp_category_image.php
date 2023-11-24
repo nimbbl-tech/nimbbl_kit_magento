@@ -15,4 +15,5 @@ $mediaDirectory = $objectManager->get(\Magento\Framework\Filesystem::class)
 $fileName = 'magento_small_image.jpg';
 $tmpFilePath = 'catalog/tmp/category/' . $fileName;
 $mediaDirectory->create('catalog/tmp/category');
-$mediaDirectory->getDriver()->filePutContents($mediaDirectory->getAbsolutePath($tmpFilePath), file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . $fileName));
+
+copy(__DIR__ . DIRECTORY_SEPARATOR . $fileName, $mediaDirectory->getAbsolutePath($tmpFilePath));

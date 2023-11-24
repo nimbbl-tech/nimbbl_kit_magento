@@ -7,106 +7,86 @@ declare(strict_types=1);
 
 namespace Magento\Sales\Controller\Adminhtml\Order\Invoice;
 
+use Magento\Framework\Api\SearchCriteria;
 use Magento\Framework\Api\SearchCriteriaBuilder;
-use Magento\Framework\App\Request\Http;
+use Magento\Framework\Data\Form\FormKey;
 use Magento\Sales\Api\Data\InvoiceInterface;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Model\OrderRepository;
-use Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory;
 use Magento\TestFramework\Mail\Template\TransportBuilderMock;
 use Magento\TestFramework\TestCase\AbstractBackendController;
 
 /**
  * Abstract backend invoice test.
  */
-abstract class AbstractInvoiceControllerTest extends AbstractBackendController
+class AbstractInvoiceControllerTest extends AbstractBackendController
 {
-    /** @var TransportBuilderMock */
+    /**
+     * @var TransportBuilderMock
+     */
     protected $transportBuilder;
 
-    /** @var string */
+    /**
+     * @var OrderRepository
+     */
+    protected $orderRepository;
+
+    /**
+     * @var FormKey
+     */
+    protected $formKey;
+
+    /**
+     * @var string
+     */
     protected $resource = 'Magento_Sales::sales_invoice';
-
-    /** @var OrderRepository */
-    private $orderRepository;
-
-    /** @var SearchCriteriaBuilder */
-    private $searchCriteriaBuilder;
-
-    /** @var CollectionFactory */
-    private $invoiceCollectionFactory;
 
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
-
         $this->transportBuilder = $this->_objectManager->get(TransportBuilderMock::class);
         $this->orderRepository = $this->_objectManager->get(OrderRepository::class);
-        $this->searchCriteriaBuilder = $this->_objectManager->get(SearchCriteriaBuilder::class);
-        $this->invoiceCollectionFactory = $this->_objectManager->get(CollectionFactory::class);
+        $this->formKey = $this->_objectManager->get(FormKey::class);
     }
 
     /**
-     * Retrieve order
-     *
      * @param string $incrementalId
      * @return OrderInterface|null
      */
-    protected function getOrder(string $incrementalId): ?OrderInterface
+    protected function getOrder(string $incrementalId)
     {
-        $searchCriteria = $this->searchCriteriaBuilder->addFilter(OrderInterface::INCREMENT_ID, $incrementalId)
+        /** @var SearchCriteria $searchCriteria */
+        $searchCriteria = $this->_objectManager->create(SearchCriteriaBuilder::class)
+            ->addFilter(OrderInterface::INCREMENT_ID, $incrementalId)
             ->create();
-        $orders = $this->orderRepository->getList($searchCriteria)->getItems();
 
-        return reset($orders);
+        $orders = $this->orderRepository->getList($searchCriteria)->getItems();
+        /** @var OrderInterface $order */
+        $order = reset($orders);
+
+        return $order;
     }
 
     /**
-     * Get firs order invoice
-     *
-     * @param OrderInterface|int $order
+     * @param OrderInterface $order
      * @return InvoiceInterface
      */
-    protected function getInvoiceByOrder($order): InvoiceInterface
+    protected function getInvoiceByOrder(OrderInterface $order): InvoiceInterface
     {
-        $invoiceCollection = $this->invoiceCollectionFactory->create();
+        /** @var \Magento\Sales\Model\ResourceModel\Order\Invoice\Collection $invoiceCollection */
+        $invoiceCollection = $this->_objectManager->create(
+            \Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory::class
+        )->create();
 
-        return $invoiceCollection->setOrderFilter($order)->setPageSize(1)->getFirstItem();
-    }
+        /** @var InvoiceInterface $invoice */
+        $invoice = $invoiceCollection
+            ->setOrderFilter($order)
+            ->setPageSize(1)
+            ->getFirstItem();
 
-    /**
-     * Prepare request
-     *
-     * @param array $postParams
-     * @param array $params
-     * @return void
-     */
-    protected function prepareRequest(array $postParams = [], array $params = []): void
-    {
-        $this->getRequest()->setMethod(Http::METHOD_POST);
-        $this->getRequest()->setParams($params);
-        $this->getRequest()->setPostValue($postParams);
-    }
-
-    /**
-     * Normalize post parameters
-     *
-     * @param array $items
-     * @param string $commentText
-     * @param bool $doShipment
-     * @return array
-     */
-    protected function hydratePost(array $items, string $commentText = '', $doShipment = false): array
-    {
-        return [
-            'invoice' => [
-                'items' => $items,
-                'comment_text' => $commentText,
-                'do_shipment' => $doShipment
-            ],
-        ];
+        return $invoice;
     }
 }

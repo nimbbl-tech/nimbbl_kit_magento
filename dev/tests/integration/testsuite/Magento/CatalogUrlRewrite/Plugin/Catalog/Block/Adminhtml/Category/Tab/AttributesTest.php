@@ -9,9 +9,6 @@ use Magento\Catalog\Model\Category\DataProvider;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\TestFramework\Helper\Bootstrap;
 
-/**
- * @magentoAppArea adminhtml
- */
 class AttributesTest extends \PHPUnit\Framework\TestCase
 {
     /**
@@ -27,7 +24,7 @@ class AttributesTest extends \PHPUnit\Framework\TestCase
     /**
      * {@inheritDoc}
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
         $objectManager = Bootstrap::getObjectManager();
@@ -54,8 +51,8 @@ class AttributesTest extends \PHPUnit\Framework\TestCase
         $urlKeyData = $meta['search_engine_optimization']['children']['url_key']['arguments']['data']['config'];
         $this->assertEquals('text', $urlKeyData['dataType']);
         $this->assertEquals('input', $urlKeyData['formElement']);
-        $this->assertTrue($urlKeyData['visible']);
-        $this->assertFalse($urlKeyData['required']);
+        $this->assertEquals(true, $urlKeyData['visible']);
+        $this->assertEquals(false, $urlKeyData['required']);
         $this->assertEquals('[STORE VIEW]', $urlKeyData['scopeLabel']);
     }
 }

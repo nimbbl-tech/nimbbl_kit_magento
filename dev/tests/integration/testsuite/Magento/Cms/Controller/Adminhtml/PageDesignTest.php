@@ -11,21 +11,18 @@ namespace Magento\Cms\Controller\Adminhtml;
 use Magento\Cms\Api\Data\PageInterface;
 use Magento\Cms\Api\GetPageByIdentifierInterface;
 use Magento\Cms\Model\Page;
+use Magento\Cms\Model\PageFactory;
 use Magento\Framework\Acl\Builder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\Request\Http as HttpRequest;
 use Magento\Framework\Message\MessageInterface;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\TestFramework\TestCase\AbstractBackendController;
-use Magento\UrlRewrite\Model\ResourceModel\UrlRewriteCollection;
-use Magento\UrlRewrite\Model\ResourceModel\UrlRewriteCollectionFactory;
-use Magento\UrlRewrite\Model\UrlRewrite;
 
 /**
  * Test the saving CMS pages design via admin area interface.
  *
  * @magentoAppArea adminhtml
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class PageDesignTest extends AbstractBackendController
 {
@@ -67,63 +64,27 @@ class PageDesignTest extends AbstractBackendController
     /**
      * @inheritDoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
-        Bootstrap::getObjectManager()->configure([
-            'preferences' => [
-                \Magento\Cms\Model\Page\CustomLayoutManagerInterface::class =>
-                    \Magento\TestFramework\Cms\Model\CustomLayoutManager::class
-            ]
-        ]);
         parent::setUp();
 
         $this->aclBuilder = Bootstrap::getObjectManager()->get(Builder::class);
         $this->pageRetriever = Bootstrap::getObjectManager()->get(GetPageByIdentifierInterface::class);
         $this->scopeConfig = Bootstrap::getObjectManager()->get(ScopeConfigInterface::class);
-        $this->pagesToDelete = [];
     }
 
     /**
      * @inheritDoc
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
         parent::tearDown();
 
-        $pageIds = [];
         foreach ($this->pagesToDelete as $identifier) {
-            $pageIds[] = $identifier;
-            $page = $this->pageRetriever->execute($identifier, 0);
+            $page = $this->pageRetriever->execute($identifier);
             $page->delete();
         }
-        $this->removeUrlRewrites();
-    }
-
-    /**
-     * Removes url rewrites created during test execution.
-     *
-     * @return void
-     */
-    private function removeUrlRewrites(): void
-    {
-        if (!empty($this->pagesToDelete)) {
-            /** @var UrlRewriteCollectionFactory $urlRewriteCollectionFactory */
-            $urlRewriteCollectionFactory = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(
-                UrlRewriteCollectionFactory::class
-            );
-            /** @var UrlRewriteCollection $urlRewriteCollection */
-            $urlRewriteCollection = $urlRewriteCollectionFactory->create();
-            $urlRewriteCollection->addFieldToFilter('request_path', ['in' => $this->pagesToDelete]);
-            $urlRewrites = $urlRewriteCollection->getItems();
-            /** @var UrlRewrite $urlRewrite */
-            foreach ($urlRewrites as $urlRewrite) {
-                try {
-                    $urlRewrite->delete();
-                } catch (\Exception $exception) {
-                    // already removed
-                }
-            }
-        }
+        $this->pagesToDelete = [];
     }
 
     /**
@@ -183,7 +144,6 @@ class PageDesignTest extends AbstractBackendController
             self::equalTo($sessionMessages),
             MessageInterface::TYPE_ERROR
         );
-        $this->pagesToDelete = [$id];
     }
 
     /**
@@ -215,7 +175,6 @@ class PageDesignTest extends AbstractBackendController
         $this->assertNotEmpty($page->getId());
         $this->assertNotNull($page->getPageLayout());
         $this->assertEquals($defaultLayout, $page->getPageLayout());
-        $this->pagesToDelete = [$id];
     }
 
     /**
@@ -262,6 +221,5 @@ class PageDesignTest extends AbstractBackendController
         $updated = $this->pageRetriever->execute('test_custom_layout_page_1', 0);
         $this->assertEmpty($updated->getCustomLayoutUpdateXml());
         $this->assertEmpty($updated->getLayoutUpdateXml());
-        $this->pagesToDelete = ['test_custom_layout_page_1'];
     }
 }

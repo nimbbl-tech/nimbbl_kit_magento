@@ -11,8 +11,6 @@ namespace Magento\Test\Integrity\Dependency;
 use Magento\Framework\App\Utility\Files;
 use Magento\Framework\Component\ComponentRegistrar;
 use Magento\Framework\Setup\Declaration\Schema\Config\Converter;
-use Magento\Framework\Exception\LocalizedException;
-use Magento\TestFramework\Inspection\Exception as InspectionException;
 
 /**
  * Provide information on the dependency between the modules according to the declarative schema.
@@ -22,24 +20,44 @@ use Magento\TestFramework\Inspection\Exception as InspectionException;
 class DeclarativeSchemaDependencyProvider
 {
     /**
+     * Types of dependency between modules.
+     */
+    const TYPE_HARD = 'hard';
+
+    /**
+     * The identifier of dependency for mapping.
+     */
+    const MAP_TYPE_DECLARED = 'declared';
+
+    /**
+     * The identifier of dependency for mapping.
+     */
+    const MAP_TYPE_FOUND = 'found';
+
+    /**
      * Declarative name for table entity of the declarative schema.
      */
-    public const SCHEMA_ENTITY_TABLE = 'table';
+    const SCHEMA_ENTITY_TABLE = 'table';
 
     /**
      * Declarative name for column entity of the declarative schema.
      */
-    public const SCHEMA_ENTITY_COLUMN = 'column';
+    const SCHEMA_ENTITY_COLUMN = 'column';
 
     /**
      * Declarative name for constraint entity of the declarative schema.
      */
-    public const SCHEMA_ENTITY_CONSTRAINT = 'constraint';
+    const SCHEMA_ENTITY_CONSTRAINT = 'constraint';
 
     /**
      * Declarative name for index entity of the declarative schema.
      */
-    public const SCHEMA_ENTITY_INDEX = 'index';
+    const SCHEMA_ENTITY_INDEX = 'index';
+
+    /**
+     * @var array
+     */
+    private $mapDependencies = [];
 
     /**
      * @var array
@@ -49,20 +67,12 @@ class DeclarativeSchemaDependencyProvider
     /**
      * @var array
      */
+    private $packageModuleMapping = [];
+
+    /**
+     * @var array
+     */
     private $moduleSchemaFileMapping = [];
-
-    /**
-     * @var DependencyProvider
-     */
-    private $dependencyProvider;
-
-    /**
-     * @param DependencyProvider $dependencyProvider
-     */
-    public function __construct(DependencyProvider $dependencyProvider)
-    {
-        $this->dependencyProvider = $dependencyProvider;
-    }
 
     /**
      * Provide declared dependencies between modules based on the declarative schema configuration.
@@ -73,23 +83,20 @@ class DeclarativeSchemaDependencyProvider
      */
     public function getDeclaredExistingModuleDependencies(string $moduleName): array
     {
+        $this->initDeclaredDependencies();
         $dependencies = $this->getDependenciesFromFiles($this->getSchemaFileNameByModuleName($moduleName));
         $dependencies = $this->filterSelfDependency($moduleName, $dependencies);
-        $declared = $this->dependencyProvider->getDeclaredDependencies(
-            $moduleName,
-            DependencyProvider::TYPE_HARD,
-            DependencyProvider::MAP_TYPE_DECLARED
-        );
+        $declared = $this->getDeclaredDependencies($moduleName, self::TYPE_HARD, self::MAP_TYPE_DECLARED);
 
         $existingDeclared = [];
         foreach ($dependencies as $dependency) {
             $checkResult = array_intersect($declared, $dependency);
             if ($checkResult) {
-                $existingDeclared[] = array_values($checkResult);
+                $existingDeclared = array_merge($existingDeclared, array_values($checkResult));
             }
         }
 
-        return array_unique(array_merge([], ...$existingDeclared));
+        return array_unique($existingDeclared);
     }
 
     /**
@@ -106,6 +113,7 @@ class DeclarativeSchemaDependencyProvider
      */
     public function getUndeclaredModuleDependencies(string $moduleName): array
     {
+        $this->initDeclaredDependencies();
         $dependencies = $this->getDependenciesFromFiles($this->getSchemaFileNameByModuleName($moduleName));
         $dependencies = $this->filterSelfDependency($moduleName, $dependencies);
         return $this->collectDependencies($moduleName, $dependencies);
@@ -116,7 +124,7 @@ class DeclarativeSchemaDependencyProvider
      *
      * @param string $module
      * @return string
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function getSchemaFileNameByModuleName(string $module): string
     {
@@ -138,16 +146,52 @@ class DeclarativeSchemaDependencyProvider
     }
 
     /**
+     * Initialise map of dependencies.
+     *
+     * @throws \Exception
+     */
+    private function initDeclaredDependencies()
+    {
+        if (empty($this->mapDependencies)) {
+            $jsonFiles = Files::init()->getComposerFiles(ComponentRegistrar::MODULE, false);
+            foreach ($jsonFiles as $file) {
+                $json = new \Magento\Framework\Config\Composer\Package($this->readJsonFile($file));
+                $moduleName = $this->convertModuleName($json->get('name'));
+                $require = array_keys((array)$json->get('require'));
+                $this->presetDependencies($moduleName, $require, self::TYPE_HARD);
+            }
+        }
+    }
+
+    /**
+     * Read data from json file.
+     *
+     * @param string $file
+     * @return mixed
+     * @throws \Exception
+     */
+    private function readJsonFile(string $file, bool $asArray = false)
+    {
+        $decodedJson = json_decode(file_get_contents($file), $asArray);
+        if (null == $decodedJson) {
+            //phpcs:ignore Magento2.Exceptions.DirectThrow
+            throw new \Exception("Invalid Json: $file");
+        }
+
+        return $decodedJson;
+    }
+
+    /**
      * Remove self dependencies.
      *
      * @param string $moduleName
      * @param array $dependencies
      * @return array
      */
-    private function filterSelfDependency(string $moduleName, array $dependencies): array
+    private function filterSelfDependency(string $moduleName, array $dependencies):array
     {
         foreach ($dependencies as $id => $modules) {
-            $decodedId = self::decodeDependencyId($id);
+            $decodedId = $this->decodeDependencyId($id);
             $entityType = $decodedId['entityType'];
             if ($entityType === self::SCHEMA_ENTITY_TABLE || $entityType === "column") {
                 if (array_search($moduleName, $modules) !== false) {
@@ -178,10 +222,12 @@ class DeclarativeSchemaDependencyProvider
         } else {
             foreach ($modules as $dependencySet) {
                 if (array_search($moduleName, $dependencySet) === false) {
-                    $resultDependencies[] = $dependencySet;
+                    $resultDependencies = array_merge(
+                        $resultDependencies,
+                        $dependencySet
+                    );
                 }
             }
-            $resultDependencies = array_merge([], ...$resultDependencies);
         }
 
         return array_values(array_unique($resultDependencies));
@@ -191,7 +237,7 @@ class DeclarativeSchemaDependencyProvider
      * Retrieve declarative schema declaration.
      *
      * @return array
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function getDeclarativeSchema(): array
     {
@@ -214,9 +260,10 @@ class DeclarativeSchemaDependencyProvider
                 array_push($tableDeclaration['modules'], $moduleName);
                 $moduleDeclaration = array_replace_recursive(
                     $moduleDeclaration,
-                    [self::SCHEMA_ENTITY_TABLE => [
-                        $tableName => $tableDeclaration,
-                    ]
+                    [self::SCHEMA_ENTITY_TABLE =>
+                        [
+                            $tableName => $tableDeclaration,
+                        ]
                     ]
                 );
                 foreach ($entityTypes as $entityType) {
@@ -225,9 +272,11 @@ class DeclarativeSchemaDependencyProvider
                     }
                     $moduleDeclaration = array_replace_recursive(
                         $moduleDeclaration,
-                        [self::SCHEMA_ENTITY_TABLE => [
-                            $tableName => $this->addModuleAssigment($tableDeclaration, $entityType, $moduleName)
-                        ]
+                        [self::SCHEMA_ENTITY_TABLE =>
+                            [
+                                $tableName =>
+                                    $this->addModuleAssigment($tableDeclaration, $entityType, $moduleName)
+                            ]
                         ]
                     );
                 }
@@ -246,7 +295,7 @@ class DeclarativeSchemaDependencyProvider
      * @param string $entityType
      * @param null|string $entityName
      * @return array
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function resolveEntityDependencies(string $tableName, string $entityType, ?string $entityName = null): array
     {
@@ -329,7 +378,7 @@ class DeclarativeSchemaDependencyProvider
      *
      * @param array $moduleDeclaration
      * @return array
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function getDisabledDependencies(array $moduleDeclaration): array
     {
@@ -418,7 +467,6 @@ class DeclarativeSchemaDependencyProvider
                     $this->getDependencyId($tableName, self::SCHEMA_ENTITY_CONSTRAINT, $constraintName);
                 switch ($constraintDeclaration['type']) {
                     case 'foreign':
-                        //phpcs:ignore Magento2.Performance.ForeachArrayMerge
                         $constraintDependencies = array_merge(
                             $constraintDependencies,
                             $this->getFKDependencies($constraintDeclaration)
@@ -442,7 +490,7 @@ class DeclarativeSchemaDependencyProvider
      * @param string $tableName
      * @param array $entityDeclaration
      * @return array
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function getComplexDependency(string $tableName, array $entityDeclaration): array
     {
@@ -468,7 +516,7 @@ class DeclarativeSchemaDependencyProvider
      *
      * @param array $moduleDeclaration
      * @return array
-     * @throws LocalizedException
+     * @throws \Exception
      */
     private function getIndexDependencies(array $moduleDeclaration): array
     {
@@ -538,13 +586,11 @@ class DeclarativeSchemaDependencyProvider
     /**
      * Collect module dependencies.
      *
-     * @param $currentModuleName
+     * @param string $currentModuleName
      * @param array $dependencies
      * @return array
-     * @throws InspectionException
-     * @throws LocalizedException
      */
-    private function collectDependencies($currentModuleName, $dependencies = []): array
+    private function collectDependencies($currentModuleName, $dependencies = [])
     {
         if (empty($dependencies)) {
             return [];
@@ -553,43 +599,160 @@ class DeclarativeSchemaDependencyProvider
             $this->collectDependency($dependencyName, $dependency, $currentModuleName);
         }
 
-        return $this->dependencyProvider->getDeclaredDependencies(
-            $currentModuleName,
-            DependencyProvider::TYPE_HARD,
-            DependencyProvider::MAP_TYPE_FOUND
-        );
+        return $this->getDeclaredDependencies($currentModuleName, self::TYPE_HARD, self::MAP_TYPE_FOUND);
     }
 
     /**
-     *  Collect a module dependency.
+     * Collect a module dependency.
      *
      * @param string $dependencyName
      * @param array $dependency
      * @param string $currentModule
-     * @throws LocalizedException
-     * @throws InspectionException
      */
     private function collectDependency(
         string $dependencyName,
         array $dependency,
         string $currentModule
     ) {
-        $declared = $this->dependencyProvider->getDeclaredDependencies(
-            $currentModule,
-            DependencyProvider::TYPE_HARD,
-            DependencyProvider::MAP_TYPE_DECLARED
-        );
+        $declared = $this->getDeclaredDependencies($currentModule, self::TYPE_HARD, self::MAP_TYPE_DECLARED);
         $checkResult = array_intersect($declared, $dependency);
 
         if (empty($checkResult)) {
-            $this->dependencyProvider->addDependencies(
+            $this->addDependencies(
                 $currentModule,
-                DependencyProvider::TYPE_HARD,
-                DependencyProvider::MAP_TYPE_FOUND,
+                self::TYPE_HARD,
+                self::MAP_TYPE_FOUND,
                 [
                     $dependencyName => $dependency,
                 ]
             );
         }
+    }
+
+    /**
+     * Add dependencies to dependency list.
+     *
+     * @param string $moduleName
+     * @param array $packageNames
+     * @param string $type
+     *
+     * @return void
+     * @throws \Exception
+     */
+    private function presetDependencies(
+        string $moduleName,
+        array $packageNames,
+        string $type
+    ): void {
+        $packageNames = array_filter($packageNames, function ($packageName) {
+            return $this->getModuleName($packageName) ||
+                0 === strpos($packageName, 'magento/') && 'magento/magento-composer-installer' != $packageName;
+        });
+
+        foreach ($packageNames as $packageName) {
+            $this->addDependencies(
+                $moduleName,
+                $type,
+                self::MAP_TYPE_DECLARED,
+                [$this->convertModuleName($packageName)]
+            );
+        }
+    }
+
+    /**
+     * Returns package name on module name mapping.
+     *
+     * @return array
+     * @throws \Exception
+     */
+    private function getPackageModuleMapping(): array
+    {
+        if (!$this->packageModuleMapping) {
+            $jsonFiles = Files::init()->getComposerFiles(ComponentRegistrar::MODULE, false);
+
+            $packageModuleMapping = [];
+            foreach ($jsonFiles as $file) {
+                $moduleXml = simplexml_load_file(dirname($file) . '/etc/module.xml');
+                $moduleName = str_replace('_', '\\', (string)$moduleXml->module->attributes()->name);
+                $composerJson = $this->readJsonFile($file);
+                $packageName = $composerJson->name;
+                $packageModuleMapping[$packageName] = $moduleName;
+            }
+
+            $this->packageModuleMapping = $packageModuleMapping;
+        }
+
+        return $this->packageModuleMapping;
+    }
+
+    /**
+     * Retrieve Magento style module name.
+     *
+     * @param string $packageName
+     * @return null|string
+     * @throws \Exception
+     */
+    private function getModuleName(string $packageName): ?string
+    {
+        return $this->getPackageModuleMapping()[$packageName] ?? null;
+    }
+
+    /**
+     * Retrieve array of dependency items.
+     *
+     * @param $module
+     * @param $type
+     * @param $mapType
+     * @return array
+     */
+    private function getDeclaredDependencies(string $module, string $type, string $mapType)
+    {
+        return $this->mapDependencies[$module][$type][$mapType] ?? [];
+    }
+
+    /**
+     * Add dependency map items.
+     *
+     * @param $module
+     * @param $type
+     * @param $mapType
+     * @param $dependencies
+     */
+    protected function addDependencies(string $module, string $type, string $mapType, array $dependencies)
+    {
+        $this->mapDependencies[$module][$type][$mapType] = array_merge_recursive(
+            $this->getDeclaredDependencies($module, $type, $mapType),
+            $dependencies
+        );
+    }
+
+    /**
+     * Converts a composer json component name into the Magento Module form.
+     *
+     * @param string $jsonName The name of a composer json component or dependency e.g. 'magento/module-theme'
+     * @return string The corresponding Magento Module e.g. 'Magento\Theme'
+     * @throws \Exception
+     */
+    private function convertModuleName(string $jsonName): string
+    {
+        $moduleName = $this->getModuleName($jsonName);
+        if ($moduleName) {
+            return $moduleName;
+        }
+
+        if (strpos($jsonName, 'magento/magento') !== false
+            || strpos($jsonName, 'magento/framework') !== false
+        ) {
+            $moduleName = str_replace('/', "\t", $jsonName);
+            $moduleName = str_replace('framework-', "Framework\t", $moduleName);
+            $moduleName = str_replace('-', ' ', $moduleName);
+            $moduleName = ucwords($moduleName);
+            $moduleName = str_replace("\t", '\\', $moduleName);
+            $moduleName = str_replace(' ', '', $moduleName);
+        } else {
+            $moduleName = $jsonName;
+        }
+
+        return $moduleName;
     }
 }

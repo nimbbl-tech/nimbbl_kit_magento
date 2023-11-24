@@ -13,8 +13,6 @@ use Magento\TestFramework\Helper\Bootstrap;
 
 /**
  * Test command that sets indexer mode for catalog_product_price indexer
- *
- * @magentoDbIsolation disabled
  */
 class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\Indexer\TestCase
 {
@@ -30,7 +28,7 @@ class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\In
     /**
      * setUp
      */
-    protected function setUp(): void
+    public function setUp()
     {
         $this->objectManager = Bootstrap::getObjectManager();
 
@@ -48,7 +46,7 @@ class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\In
     /**
      * setUpBeforeClass
      */
-    public static function setUpBeforeClass(): void
+    public static function setUpBeforeClass()
     {
         $db = Bootstrap::getInstance()->getBootstrap()
             ->getApplication()
@@ -82,7 +80,7 @@ class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\In
 
         $actualOutput = $this->commandTester->getDisplay();
 
-        $this->assertStringContainsString($expectedOutput, $actualOutput);
+        $this->assertContains($expectedOutput, $actualOutput);
 
         static::assertEquals(
             Cli::RETURN_SUCCESS,
@@ -137,7 +135,7 @@ class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\In
 
         $actualOutput = $this->commandTester->getDisplay();
 
-        $this->assertStringContainsString($expectedOutput, $actualOutput);
+        $this->assertContains($expectedOutput, $actualOutput);
 
         static::assertEquals(
             Cli::RETURN_SUCCESS,
@@ -150,11 +148,10 @@ class PriceIndexerDimensionsModeSetCommandTest extends \Magento\TestFramework\In
      * @magentoAppArea adminhtml
      * @magentoAppIsolation enabled
      *
+     * @expectedException \InvalidArgumentException
      */
     public function testSwitchModeWithInvalidArgument()
     {
-        $this->expectException(\InvalidArgumentException::class);
-
         $this->commandTester->execute(
             [
                 'indexer' => 'indexer_not_valid'

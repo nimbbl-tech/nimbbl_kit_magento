@@ -7,7 +7,6 @@ declare(strict_types=1);
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Customer\Api\GroupRepositoryInterface;
-use Magento\Framework\Registry;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -22,11 +21,6 @@ $searchCriteria = $searchBuilder->addFilter(GroupInterface::CODE, 'custom_group'
     ->create();
 $groups = $groupRepository->getList($searchCriteria)
     ->getItems();
-
-/** @var Registry $registry */
-$registry = $objectManager->get(Registry::class);
-$registry->unregister('isSecureArea');
-$registry->register('isSecureArea', true);
 foreach ($groups as $group) {
     try {
         $groupRepository->delete($group);
@@ -34,5 +28,3 @@ foreach ($groups as $group) {
         //Group already removed
     }
 }
-$registry->unregister('isSecureArea');
-$registry->register('isSecureArea', false);

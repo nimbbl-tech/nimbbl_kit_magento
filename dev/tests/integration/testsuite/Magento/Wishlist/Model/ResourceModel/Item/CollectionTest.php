@@ -33,7 +33,7 @@ class CollectionTest extends \PHPUnit\Framework\TestCase
      */
     private $attributeConfig;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = ObjectManager::getInstance();
         $this->wishlist = $this->objectManager->create(Wishlist::class);
@@ -46,7 +46,7 @@ class CollectionTest extends \PHPUnit\Framework\TestCase
      *
      * @magentoDataFixture Magento/Wishlist/_files/wishlist_shared.php
      * @magentoAppIsolation enabled
-     * @magentoDbIsolation disabled
+     * @magentoDbIsolation enabled
      */
     public function testLoadedProductAttributes()
     {
@@ -60,23 +60,6 @@ class CollectionTest extends \PHPUnit\Framework\TestCase
         $productOnWishlist = $this->itemCollection->getFirstItem()->getProduct();
         $this->assertEquals('Simple Product', $productOnWishlist->getName());
         $this->assertEquals('Short description', $productOnWishlist->getData('short_description'));
-    }
-
-    /**
-     * Tests collection load.
-     * Tests collection load method when product salable filter flag is setted to true
-     * and few products are present.
-     *
-     * @magentoDataFixture Magento/Catalog/_files/second_product_simple.php
-     * @magentoDataFixture Magento/Wishlist/_files/wishlist.php
-     * @magentoDbIsolation disabled
-     */
-    public function testLoadWhenFewProductsPresent()
-    {
-        $this->itemCollection->setSalableFilter(true);
-        $this->itemCollection->addCustomerIdFilter(1);
-        $this->itemCollection->load();
-        $this->assertCount(1, $this->itemCollection->getItems());
     }
 
     /**

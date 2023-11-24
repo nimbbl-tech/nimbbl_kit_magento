@@ -3,39 +3,43 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
-declare(strict_types=1);
-
-use Magento\Customer\Model\Address;
-use Magento\Customer\Model\Customer;
-use Magento\Customer\Model\ResourceModel\Customer as CustomerResource;
-use Magento\TestFramework\Helper\Bootstrap;
-
-$objectManager = Bootstrap::getObjectManager();
-
-/**
- * @var Customer $customer
- * @var CustomerResource $customerResource
- */
-$customer = Bootstrap::getObjectManager()->create(Customer::class);
-$customerResource = $objectManager->create(CustomerResource::class);
-
-$customer->setWebsiteId(0)
-    ->setEntityId(1)
-    ->setEntityTypeId(1)
-    ->setAttributeSetId(0)
-    ->setEmail('BetsyParker@example.com')
-    ->setPassword('password')
-    ->setGroupId(0)
-    ->setStoreId(0)
-    ->setIsActive(1)
-    ->setFirstname('Betsy')
-    ->setLastname('Parker')
-    ->setGender(2);
+//Create customer
+/** @var Magento\Customer\Model\Customer $customer */
+$customer = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
+    \Magento\Customer\Model\Customer::class
+);
+$customer->setWebsiteId(
+    0
+)->setEntityId(
+    1
+)->setEntityTypeId(
+    1
+)->setAttributeSetId(
+    0
+)->setEmail(
+    'BetsyParker@example.com'
+)->setPassword(
+    'password'
+)->setGroupId(
+    0
+)->setStoreId(
+    0
+)->setIsActive(
+    1
+)->setFirstname(
+    'Betsy'
+)->setLastname(
+    'Parker'
+)->setGender(
+    2
+);
 $customer->isObjectNew(true);
-$customerResource->save($customer);
+$customer->save();
 
-$addressFirst = $objectManager->create(Address::class);
+// Create and set addresses
+$addressFirst = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
+    \Magento\Customer\Model\Address::class
+);
 $addressFirst->addData(
     [
         'entity_id' => 1,
@@ -53,7 +57,9 @@ $addressFirst->isObjectNew(true);
 $customer->addAddress($addressFirst);
 $customer->setDefaultBilling($addressFirst->getId());
 
-$addressSecond = $objectManager->create(Address::class);
+$addressSecond = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
+    \Magento\Customer\Model\Address::class
+);
 $addressSecond->addData(
     [
         'entity_id' => 2,
@@ -70,4 +76,4 @@ $addressSecond->addData(
 $addressSecond->isObjectNew(true);
 $customer->addAddress($addressSecond);
 $customer->setDefaultShipping($addressSecond->getId());
-$customerResource->save($customer);
+$customer->save();

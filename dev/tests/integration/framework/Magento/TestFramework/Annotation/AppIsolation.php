@@ -9,11 +9,6 @@
  */
 namespace Magento\TestFramework\Annotation;
 
-use Magento\Framework\Exception\LocalizedException;
-use Magento\TestFramework\Application;
-use Magento\TestFramework\TestCase\AbstractController;
-use PHPUnit\Framework\TestCase;
-
 class AppIsolation
 {
     /**
@@ -21,12 +16,12 @@ class AppIsolation
      *
      * @var bool
      */
-    private $hasNonIsolatedTests = true;
+    private $_hasNonIsolatedTests = true;
 
     /**
-     * @var Application
+     * @var \Magento\TestFramework\Application
      */
-    private $application;
+    private $_application;
 
     /**
      * @var array
@@ -36,11 +31,11 @@ class AppIsolation
     /**
      * Constructor
      *
-     * @param Application $application
+     * @param \Magento\TestFramework\Application $application
      */
-    public function __construct(Application $application)
+    public function __construct(\Magento\TestFramework\Application $application)
     {
-        $this->application = $application;
+        $this->_application = $application;
     }
 
     /**
@@ -48,12 +43,12 @@ class AppIsolation
      */
     protected function _isolateApp()
     {
-        if ($this->hasNonIsolatedTests) {
-            $this->application->reinitialize();
+        if ($this->_hasNonIsolatedTests) {
+            $this->_application->reinitialize();
             $_SESSION = [];
             $_COOKIE = [];
             session_write_close();
-            $this->hasNonIsolatedTests = false;
+            $this->_hasNonIsolatedTests = false;
         }
     }
 
@@ -77,44 +72,31 @@ class AppIsolation
     /**
      * Handler for 'endTest' event
      *
-     * @param TestCase $test
-     * @throws LocalizedException
+     * @param \PHPUnit\Framework\TestCase $test
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
-    public function endTest(TestCase $test)
+    public function endTest(\PHPUnit\Framework\TestCase $test)
     {
-        $this->hasNonIsolatedTests = true;
+        $this->_hasNonIsolatedTests = true;
 
         /* Determine an isolation from doc comment */
-        $annotations = $this->getAnnotations($test);
+        $annotations = $test->getAnnotations();
+        $annotations = array_replace((array) $annotations['class'], (array) $annotations['method']);
         if (isset($annotations['magentoAppIsolation'])) {
             $isolation = $annotations['magentoAppIsolation'];
             if ($isolation !== ['enabled'] && $isolation !== ['disabled']) {
-                throw new LocalizedException(
+                throw new \Magento\Framework\Exception\LocalizedException(
                     __('Invalid "@magentoAppIsolation" annotation, can be "enabled" or "disabled" only.')
                 );
             }
             $isIsolationEnabled = $isolation === ['enabled'];
         } else {
             /* Controller tests should be isolated by default */
-            $isIsolationEnabled = $test instanceof AbstractController;
+            $isIsolationEnabled = $test instanceof \Magento\TestFramework\TestCase\AbstractController;
         }
 
         if ($isIsolationEnabled) {
             $this->_isolateApp();
         }
-    }
-
-    /**
-     * Get method annotations.
-     *
-     * Overwrites class-defined annotations.
-     *
-     * @param TestCase $test
-     * @return array
-     */
-    private function getAnnotations(TestCase $test): array
-    {
-        $annotations = $test->getAnnotations();
-        return array_replace((array)$annotations['class'], (array)$annotations['method']);
     }
 }

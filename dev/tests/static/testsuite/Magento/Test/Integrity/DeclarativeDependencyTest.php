@@ -8,20 +8,14 @@ declare(strict_types=1);
 
 namespace Magento\Test\Integrity;
 
-use Magento\Framework\App\ObjectManager;
-use Magento\Framework\App\Utility\AggregateInvoker;
+use Magento\Test\Integrity\Dependency\DeclarativeSchemaDependencyProvider;
 use Magento\Framework\App\Utility\Files;
 use Magento\Framework\Component\ComponentRegistrar;
-use Magento\Framework\Exception\LocalizedException;
-use Magento\Test\Integrity\Dependency\DeclarativeSchemaDependencyProvider;
-use Magento\TestFramework\Inspection\Exception as InspectionException;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Class DeclarativeDependencyTest
- * Test for undeclared dependencies in declarative schema
  */
-class DeclarativeDependencyTest extends TestCase
+class DeclarativeDependencyTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @var DeclarativeSchemaDependencyProvider
@@ -31,9 +25,9 @@ class DeclarativeDependencyTest extends TestCase
     /**
      * Sets up data
      *
-     * @throws InspectionException
+     * @throws \Exception
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $root = BP;
         $rootJson = $this->readJsonFile($root . '/composer.json', true);
@@ -43,16 +37,15 @@ class DeclarativeDependencyTest extends TestCase
                 'MAGETWO-43654: The build is running from vendor/magento. DependencyTest is skipped.'
             );
         }
-        $objectManager = ObjectManager::getInstance();
-        $this->dependencyProvider = $objectManager->create(DeclarativeSchemaDependencyProvider::class);
+        $this->dependencyProvider = new DeclarativeSchemaDependencyProvider();
     }
 
     /**
-     * @throws LocalizedException
+     * @throws \Exception
      */
     public function testUndeclaredDependencies()
     {
-        $invoker = new AggregateInvoker($this);
+        $invoker = new \Magento\Framework\App\Utility\AggregateInvoker($this);
         $invoker(
             /**
              * Check undeclared modules dependencies for specified file
@@ -114,7 +107,7 @@ class DeclarativeDependencyTest extends TestCase
      */
     private function getErrorMessage(string $id): string
     {
-        $decodedId = DeclarativeSchemaDependencyProvider::decodeDependencyId($id);
+        $decodedId = $this->dependencyProvider->decodeDependencyId($id);
         $entityType = $decodedId['entityType'];
         if ($entityType === DeclarativeSchemaDependencyProvider::SCHEMA_ENTITY_TABLE) {
             $message = sprintf(
@@ -138,13 +131,14 @@ class DeclarativeDependencyTest extends TestCase
      *
      * @param string $file
      * @return mixed
-     * @throws InspectionException
+     * @throws \Exception
      */
     private function readJsonFile(string $file, bool $asArray = false)
     {
         $decodedJson = json_decode(file_get_contents($file), $asArray);
         if (null == $decodedJson) {
-            throw new InspectionException("Invalid Json: $file");
+            //phpcs:ignore Magento2.Exceptions.DirectThrow
+            throw new \Exception("Invalid Json: $file");
         }
 
         return $decodedJson;

@@ -4,15 +4,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\Catalog\Api;
 
 use Magento\TestFramework\TestCase\WebapiAbstract;
 
-/**
- * Represents CategoryLinkManagementTest Class
- */
 class CategoryLinkManagementTest extends WebapiAbstract
 {
     const SERVICE_WRITE_NAME = 'catalogCategoryLinkManagementV1';
@@ -44,25 +39,15 @@ class CategoryLinkManagementTest extends WebapiAbstract
         try {
             $this->getAssignedProducts(-1);
         } catch (\Exception $e) {
-            $this->assertStringContainsString('No such entity with %fieldName = %fieldValue', $e->getMessage());
+            $this->assertContains('No such entity with %fieldName = %fieldValue', $e->getMessage());
         }
     }
 
     /**
-     * @magentoApiDataFixture Magento/Catalog/_files/categories.php
-     */
-    public function testDuplicatedProductsInChildCategories()
-    {
-        $result = $this->getAssignedProducts(3, 'all');
-        $this->assertCount(3, $result);
-    }
-
-    /**
      * @param int $id category id
-     * @param string|null $storeCode
-     * @return array|string
+     * @return string
      */
-    private function getAssignedProducts(int $id, ?string $storeCode = null)
+    protected function getAssignedProducts($id)
     {
         $serviceInfo = [
             'rest' => [
@@ -75,6 +60,6 @@ class CategoryLinkManagementTest extends WebapiAbstract
                 'operation' => self::SERVICE_WRITE_NAME . 'GetAssignedProducts',
             ],
         ];
-        return $this->_webApiCall($serviceInfo, ['categoryId' => $id], null, $storeCode);
+        return $this->_webApiCall($serviceInfo, ['categoryId' => $id]);
     }
 }

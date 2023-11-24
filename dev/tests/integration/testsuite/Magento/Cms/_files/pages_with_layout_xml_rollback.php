@@ -8,33 +8,25 @@ declare(strict_types=1);
 
 use Magento\Cms\Model\Page as PageModel;
 use Magento\Cms\Model\PageFactory as PageModelFactory;
-use Magento\Cms\Model\ResourceModel\Page as PageResource;
 use Magento\TestFramework\Helper\Bootstrap;
 
 $objectManager = Bootstrap::getObjectManager();
 $pageFactory = $objectManager->get(PageModelFactory::class);
-
-/**
- * @var PageModel $page
- * @var PageResource $pageResource
- */
+/** @var PageModel $page */
 $page = $pageFactory->create();
-$pageResource = $objectManager->create(PageResource::class);
-$pageResource->load($page, 'test_custom_layout_page_1', PageModel::IDENTIFIER);
+$page->load('test_custom_layout_page_1', PageModel::IDENTIFIER);
 if ($page->getId()) {
-    $pageResource->delete($page);
+    $page->delete();
 }
-
 /** @var PageModel $page2 */
 $page2 = $pageFactory->create();
-$pageResource->load($page2, 'test_custom_layout_page_2', PageModel::IDENTIFIER);
+$page2->load('test_custom_layout_page_2', PageModel::IDENTIFIER);
 if ($page2->getId()) {
-    $pageResource->delete($page2);
+    $page2->delete();
 }
-
 /** @var PageModel $page3 */
 $page3 = $pageFactory->create();
-$pageResource->load($page3, 'test_custom_layout_page_3', PageModel::IDENTIFIER);
+$page3->load('test_custom_layout_page_3', PageModel::IDENTIFIER);
 if ($page3->getId()) {
-    $pageResource->delete($page3);
+    $page3->delete();
 }

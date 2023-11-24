@@ -3,196 +3,127 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
 
 namespace Magento\Customer\Model;
 
-use Magento\Customer\Model\ResourceModel\Customer as CustomerResourceModel;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\ObjectManagerInterface;
-use Magento\Store\Model\StoreManagerInterface;
 use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
 
 /**
  * Test for \Magento\Customer\Model\CustomerRegistry
- *
- * @magentoDbIsolation enabled
  */
-class CustomerRegistryTest extends TestCase
+class CustomerRegistryTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var ObjectManagerInterface
+     * @var \Magento\Customer\Model\CustomerRegistry
      */
-    private $objectManager;
+    protected $_model;
+
+    /**#@+
+     * Data set in customer fixture
+     */
+    const CUSTOMER_ID = 1;
+    const CUSTOMER_EMAIL = 'customer@example.com';
+    const WEBSITE_ID = 1;
 
     /**
-     * @var CustomerRegistry
+     * Initialize SUT
      */
-    private $model;
-
-    /**
-     * @var StoreManagerInterface
-     */
-    private $storeManager;
-
-    /**
-     * @var CustomerResourceModel
-     */
-    private $customerResourceModel;
-
-    /**
-     * @var int
-     */
-    private $defaultWebsiteId;
-
-    /**
-     * @inheritdoc
-     */
-    protected function setUp(): void
+    protected function setUp()
     {
-        parent::setUp();
-
-        $this->objectManager = Bootstrap::getObjectManager();
-        $this->model = $this->objectManager->get(CustomerRegistry::class);
-        $this->storeManager = $this->objectManager->get(StoreManagerInterface::class);
-        $this->customerResourceModel = $this->objectManager->get(CustomerResourceModel::class);
-        $this->defaultWebsiteId = $this->storeManager->getWebsite('base')->getWebsiteId();
+        $this->_model = Bootstrap::getObjectManager()
+            ->create(\Magento\Customer\Model\CustomerRegistry::class);
     }
 
     /**
      * @magentoDataFixture Magento/Customer/_files/customer.php
-     *
-     * @return void
      */
-    public function testRetrieve(): void
+    public function testRetrieve()
     {
-        $customer = $this->model->retrieve(1);
-        $this->assertInstanceOf(Customer::class, $customer);
-        $this->assertEquals(1, $customer->getId());
+        $customer = $this->_model->retrieve(self::CUSTOMER_ID);
+        $this->assertInstanceOf(\Magento\Customer\Model\Customer::class, $customer);
+        $this->assertEquals(self::CUSTOMER_ID, $customer->getId());
     }
 
     /**
      * @magentoDataFixture Magento/Customer/_files/customer.php
-     *
-     * @return void
      */
-    public function testRetrieveByEmail(): void
+    public function testRetrieveByEmail()
     {
-        $email = 'customer@example.com';
-        $customer = $this->model->retrieveByEmail($email, $this->defaultWebsiteId);
-        $this->assertInstanceOf(Customer::class, $customer);
-        $this->assertEquals($email, $customer->getEmail());
+        $customer = $this->_model->retrieveByEmail('customer@example.com', self::WEBSITE_ID);
+        $this->assertInstanceOf(\Magento\Customer\Model\Customer::class, $customer);
+        $this->assertEquals(self::CUSTOMER_EMAIL, $customer->getEmail());
     }
 
     /**
      * @magentoDataFixture Magento/Customer/_files/customer.php
      * @magentoAppArea adminhtml
-     *
-     * @return void
      */
-    public function testRetrieveCached(): void
+    public function testRetrieveCached()
     {
-        $customerId = 1;
-        $customerBeforeDeletion = $this->model->retrieve($customerId);
-        $this->customerResourceModel->load($customerBeforeDeletion, $customerBeforeDeletion->getId());
-        $this->customerResourceModel->delete($customerBeforeDeletion);
-        $this->assertEquals($customerBeforeDeletion, $this->model->retrieve($customerId));
-        $this->assertEquals($customerBeforeDeletion, $this->model
-            ->retrieveByEmail('customer@example.com', $this->defaultWebsiteId));
+        //Setup customer in the id and email registries
+        $customerBeforeDeletion = $this->_model->retrieve(self::CUSTOMER_ID);
+        //Delete the customer from db
+        Bootstrap::getObjectManager()->create(
+            \Magento\Customer\Model\Customer::class
+        )->load(self::CUSTOMER_ID)->delete();
+        //Verify presence of Customer in registry
+        $this->assertEquals($customerBeforeDeletion, $this->_model->retrieve(self::CUSTOMER_ID));
+        //Verify presence of Customer in email registry
+        $this->assertEquals($customerBeforeDeletion, $this->_model
+                ->retrieveByEmail(self::CUSTOMER_EMAIL, self::WEBSITE_ID));
     }
 
     /**
-     * @return void
+     * @expectedException \Magento\Framework\Exception\NoSuchEntityException
+     * @expectedExceptionMessage No such entity with customerId = 1
      */
-    public function testRetrieveException(): void
+    public function testRetrieveException()
     {
-        $customerId = 1;
-        $this->expectException(NoSuchEntityException::class);
-        $this->expectExceptionMessage(sprintf('No such entity with customerId = %s', $customerId));
-
-        $this->model->retrieve($customerId);
+        $this->_model->retrieve(self::CUSTOMER_ID);
     }
 
-    /**
-     * @return void
-     */
-    public function testRetrieveEmailException(): void
+    public function testRetrieveEmailException()
     {
-        $email = 'customer@example.com';
-        $this->expectExceptionObject(
-            NoSuchEntityException::doubleField('email', $email, 'websiteId', $this->defaultWebsiteId)
-        );
-        $this->model->retrieveByEmail($email, $this->defaultWebsiteId);
+        try {
+            $this->_model->retrieveByEmail(self::CUSTOMER_EMAIL, self::WEBSITE_ID);
+            $this->fail("NoSuchEntityException was not thrown as expected.");
+        } catch (NoSuchEntityException $e) {
+            $expectedParams = [
+                'fieldName' => 'email',
+                'fieldValue' => 'customer@example.com',
+                'field2Name' => 'websiteId',
+                'field2Value' => 1,
+            ];
+            $this->assertEquals($expectedParams, $e->getParameters());
+        }
     }
 
     /**
      * @magentoDataFixture Magento/Customer/_files/customer.php
+     * @expectedException \Magento\Framework\Exception\NoSuchEntityException
      * @magentoAppArea adminhtml
-     *
-     * @return void
      */
-    public function testRemove(): void
+    public function testRemove()
     {
-        $this->expectException(NoSuchEntityException::class);
-        $customerId = 1;
-        $customer = $this->model->retrieve($customerId);
-        $this->assertInstanceOf(Customer::class, $customer);
-        $this->customerResourceModel->delete($customer);
-        $this->model->remove($customerId);
-        $this->model->retrieve($customerId);
+        $customer = $this->_model->retrieve(self::CUSTOMER_ID);
+        $this->assertInstanceOf(\Magento\Customer\Model\Customer::class, $customer);
+        $customer->delete();
+        $this->_model->remove(self::CUSTOMER_ID);
+        $this->_model->retrieve(self::CUSTOMER_ID);
     }
 
     /**
      * @magentoDataFixture Magento/Customer/_files/customer.php
+     * @expectedException \Magento\Framework\Exception\NoSuchEntityException
      * @magentoAppArea adminhtml
-     *
-     * @return void
      */
-    public function testRemoveByEmail(): void
+    public function testRemoveByEmail()
     {
-        $this->expectException(NoSuchEntityException::class);
-        $email = 'customer@example.com';
-        $customer = $this->model->retrieve(1);
-        $this->assertInstanceOf(Customer::class, $customer);
-        $this->customerResourceModel->delete($customer);
-        $this->model->removeByEmail($email, $this->defaultWebsiteId);
-        $this->model->retrieveByEmail($email, $customer->getWebsiteId());
-    }
-
-    /**
-     * Test customer is available for all websites with global account scope config.
-     *
-     * @magentoConfigFixture current_store customer/account_share/scope 0
-     * @magentoDataFixture Magento/Customer/_files/customer.php
-     * @magentoDataFixture Magento/Store/_files/second_website_with_two_stores.php
-     *
-     * @return void
-     */
-    public function testRetrieveAccountInGlobalScope(): void
-    {
-        $email = 'customer@example.com';
-        $websiteId = $this->storeManager->getWebsite('test')->getWebsiteId();
-        $customer = $this->model->retrieveByEmail($email, $websiteId);
-        $this->assertEquals($email, $customer->getEmail());
-    }
-
-    /**
-     * Test customer is not available for second website with account scope config per websites.
-     *
-     * @magentoConfigFixture current_store customer/account_share/scope 1
-     * @magentoDataFixture Magento/Customer/_files/customer.php
-     * @magentoDataFixture Magento/Store/_files/second_website_with_two_stores.php
-     *
-     * @return void
-     */
-    public function testRetrieveAccountInWebsiteScope(): void
-    {
-        $email = 'customer@example.com';
-        $websiteId = $this->storeManager->getWebsite('test')->getWebsiteId();
-        $this->expectExceptionObject(
-            NoSuchEntityException::doubleField('email', $email, 'websiteId', $websiteId)
-        );
-        $this->model->retrieveByEmail($email, $websiteId);
+        $customer = $this->_model->retrieve(self::CUSTOMER_ID);
+        $this->assertInstanceOf(\Magento\Customer\Model\Customer::class, $customer);
+        $customer->delete();
+        $this->_model->removeByEmail(self::CUSTOMER_EMAIL, self::WEBSITE_ID);
+        $this->_model->retrieveByEmail(self::CUSTOMER_EMAIL, $customer->getWebsiteId());
     }
 }

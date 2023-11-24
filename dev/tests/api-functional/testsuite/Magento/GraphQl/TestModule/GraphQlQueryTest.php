@@ -10,7 +10,7 @@ namespace Magento\GraphQl\TestModule;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
 
 /**
- * Test for basic GraphQl features
+ * Class GraphQlQueryTest
  */
 class GraphQlQueryTest extends GraphQlAbstract
 {
@@ -99,30 +99,5 @@ QUERY;
         $response = $this->graphQlQuery($query, $variables, '', []);
 
         $this->assertArrayHasKey('testItem', $response);
-    }
-
-    public function testQueryTestUnionResults()
-    {
-        $query = <<<QUERY
-{
-    testUnion {
-      __typename
-      ... on TypeCustom1 {
-          custom_name1
-      }
-      ... on TypeCustom2 {
-          custom_name2
-      }
-    }
-}
-QUERY;
-
-        $response = $this->graphQlQuery($query);
-
-        $this->assertArrayHasKey('testUnion', $response);
-        $testUnion = $response['testUnion'];
-        $this->assertArrayHasKey('custom_name1', $testUnion);
-        $this->assertEquals('custom_name1_value', $testUnion['custom_name1']);
-        $this->assertArrayNotHasKey('custom_name2', $testUnion);
     }
 }

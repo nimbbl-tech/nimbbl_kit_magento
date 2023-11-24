@@ -69,26 +69,35 @@ QUERY;
 
         $productIdsFromCategory = $category->getProductCollection()->getAllIds();
         foreach ($productIdsFromCategory as $productId) {
-            $resolvedCategoryIds[] = $productRepository->getById($productId)->getCategoryIds();
+            // phpcs:ignore Magento2.Performance.ForeachArrayMerge
+            $resolvedCategoryIds = array_merge(
+                $resolvedCategoryIds,
+                $productRepository->getById($productId)->getCategoryIds()
+            );
         }
 
-        $productIdsFromCategory = [$productIdsFromCategory];
-        $resolvedCategoryIds = array_merge(array_merge([], ...$resolvedCategoryIds), [$baseCategoryId]);
+        // phpcs:ignore Magento2.Performance.ForeachArrayMerge
+        $resolvedCategoryIds = array_merge($resolvedCategoryIds, [$baseCategoryId]);
         foreach ($resolvedCategoryIds as $categoryId) {
             $category = $categoryRepository->get($categoryId);
-            $productIdsFromCategory[] = $category->getProductCollection()->getAllIds();
+            // phpcs:ignore Magento2.Performance.ForeachArrayMerge
+            $productIdsFromCategory= array_merge(
+                $productIdsFromCategory,
+                $category->getProductCollection()->getAllIds()
+            );
         }
 
-        $uniqueProductIds = array_unique(array_merge([], ...$productIdsFromCategory));
+        $uniqueProductIds = array_unique($productIdsFromCategory);
         $uniqueCategoryIds = array_unique($resolvedCategoryIds);
-        $expectedCacheTags = [];
+        $expectedCacheTags = ['cat_c', 'cat_p', 'FPC'];
         foreach ($uniqueProductIds as $uniqueProductId) {
-            $expectedCacheTags[] = ['cat_p_' . $uniqueProductId];
+            // phpcs:ignore Magento2.Performance.ForeachArrayMerge
+            $expectedCacheTags = array_merge($expectedCacheTags, ['cat_p_' . $uniqueProductId]);
         }
         foreach ($uniqueCategoryIds as $uniqueCategoryId) {
-            $expectedCacheTags[] = ['cat_c_' . $uniqueCategoryId];
+            // phpcs:ignore Magento2.Performance.ForeachArrayMerge
+            $expectedCacheTags = array_merge($expectedCacheTags, ['cat_c_' . $uniqueCategoryId]);
         }
-        $expectedCacheTags = array_merge(['cat_c', 'cat_p', 'FPC'], ...$expectedCacheTags);
 
         $response = $this->dispatchGraphQlGETRequest(['query' => $query]);
         $this->assertEquals('MISS', $response->getHeader('X-Magento-Cache-Debug')->getFieldValue());

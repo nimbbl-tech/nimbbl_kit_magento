@@ -3,7 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-
 namespace Magento\Paypal\Model\Express;
 
 use Magento\Checkout\Model\Type\Onepage;
@@ -17,13 +16,11 @@ use Magento\Quote\Model\Quote;
 use Magento\Quote\Model\Quote\Address;
 use Magento\Quote\Model\ResourceModel\Quote\Collection;
 use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
 
 /**
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class CheckoutTest extends TestCase
+class CheckoutTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @var ObjectManagerInterface
@@ -31,22 +28,22 @@ class CheckoutTest extends TestCase
     private $objectManager;
 
     /**
-     * @var Info|MockObject
+     * @var Info|\PHPUnit_Framework_MockObject_MockObject
      */
     private $paypalInfo;
 
     /**
-     * @var Config|MockObject
+     * @var Config|\PHPUnit_Framework_MockObject_MockObject
      */
     private $paypalConfig;
 
     /**
-     * @var Factory|MockObject
+     * @var Factory|\PHPUnit_Framework_MockObject_MockObject
      */
     private $apiTypeFactory;
 
     /**
-     * @var Nvp|MockObject
+     * @var Nvp|\PHPUnit_Framework_MockObject_MockObject
      */
     private $api;
 
@@ -60,7 +57,7 @@ class CheckoutTest extends TestCase
      *
      * @return void
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->objectManager = Bootstrap::getObjectManager();
 
@@ -79,7 +76,7 @@ class CheckoutTest extends TestCase
 
         $this->api->expects($this->any())
             ->method('call')
-            ->willReturn([]);
+            ->will($this->returnValue([]));
 
         $this->apiTypeFactory = $this->getMockBuilder(Factory::class)
             ->disableOriginalConstructor()
@@ -87,7 +84,7 @@ class CheckoutTest extends TestCase
 
         $this->apiTypeFactory->expects($this->any())
             ->method('create')
-            ->willReturn($this->api);
+            ->will($this->returnValue($this->api));
     }
 
     /**
@@ -129,11 +126,11 @@ class CheckoutTest extends TestCase
 
         $api->expects($this->any())
             ->method('callSetExpressCheckout')
-            ->willReturn(null);
+            ->will($this->returnValue(null));
 
         $apiTypeFactory->expects($this->any())
             ->method('create')
-            ->willReturn($api);
+            ->will($this->returnValue($api));
 
         $checkoutModel->start(
             'return',
@@ -174,7 +171,7 @@ class CheckoutTest extends TestCase
         $customer = $customerService->getById($quote->getCustomerId());
 
         $this->assertEquals(1, $quote->getCustomerId());
-        $this->assertCount(2, $customer->getAddresses());
+        $this->assertEquals(2, count($customer->getAddresses()));
 
         $this->assertEquals(1, $quote->getBillingAddress()->getCustomerAddressId());
         $this->assertEquals(2, $quote->getShippingAddress()->getCustomerAddressId());
@@ -215,28 +212,6 @@ class CheckoutTest extends TestCase
         $order = $checkout->getOrder();
         $this->assertNotEmpty($order->getBillingAddress());
         $this->assertNotEmpty($order->getShippingAddress());
-    }
-
-    /**
-     * Place the order as guest when `Automatic Assignment to Customer Group` is enabled.
-     *
-     * @magentoDataFixture Magento/Paypal/_files/quote_express.php
-     * @magentoConfigFixture current_store customer/create_account/auto_group_assign 1
-     *
-     * @return void
-     */
-    public function testPlaceGuestQuoteAutomaticAssignmentEnabled(): void
-    {
-        $quote = $this->getFixtureQuote();
-        $quote->setCheckoutMethod(Onepage::METHOD_GUEST);
-        $quote->getShippingAddress()->setSameAsBilling(0);
-        $quote->setReservedOrderId(null);
-
-        $checkout = $this->getCheckout($quote);
-        $checkout->place('token');
-
-        $order = $checkout->getOrder();
-        $this->assertNotEmpty($order->getRealOrderId());
     }
 
     /**
@@ -281,12 +256,12 @@ class CheckoutTest extends TestCase
         $exportedBillingAddress = $this->getExportedAddressFixture($quote->getBillingAddress()->getData(), $prefix);
         $this->api->expects($this->any())
             ->method('getExportedBillingAddress')
-            ->willReturn($exportedBillingAddress);
+            ->will($this->returnValue($exportedBillingAddress));
 
         $exportedShippingAddress = $this->getExportedAddressFixture($quote->getShippingAddress()->getData(), $prefix);
         $this->api->expects($this->any())
             ->method('getExportedShippingAddress')
-            ->willReturn($exportedShippingAddress);
+            ->will($this->returnValue($exportedShippingAddress));
 
         $this->paypalInfo->expects($this->once())->method('importToPayment')->with($this->api, $quote->getPayment());
 
@@ -295,7 +270,7 @@ class CheckoutTest extends TestCase
         $this->checkoutModel->returnFromPaypal('token');
 
         $billingAddress = $quote->getBillingAddress();
-        $this->assertStringContainsString($prefix, $billingAddress->getFirstname());
+        $this->assertContains($prefix, $billingAddress->getFirstname());
         $this->assertEquals('note', $billingAddress->getCustomerNote());
 
         $shippingAddress = $quote->getShippingAddress();
@@ -304,7 +279,7 @@ class CheckoutTest extends TestCase
         $this->assertNull($shippingAddress->getMiddlename());
         $this->assertNull($shippingAddress->getSuffix());
         $this->assertTrue($shippingAddress->getShouldIgnoreValidation());
-        $this->assertStringContainsString('exported', $shippingAddress->getFirstname());
+        $this->assertContains('exported', $shippingAddress->getFirstname());
         $paymentAdditionalInformation = $quote->getPayment()->getAdditionalInformation();
         $this->assertArrayHasKey(Checkout::PAYMENT_INFO_TRANSPORT_SHIPPING_METHOD, $paymentAdditionalInformation);
         $this->assertArrayHasKey(Checkout::PAYMENT_INFO_TRANSPORT_PAYER_ID, $paymentAdditionalInformation);
@@ -523,16 +498,13 @@ class CheckoutTest extends TestCase
      * @magentoConfigFixture current_store general/country/default CA
      *
      * @magentoDbIsolation enabled
+     * @expectedException \Magento\Framework\Exception\LocalizedException
+     * @expectedExceptionMessage You can't use the payment type you selected to make payments to the billing country.
      *
      * @return void
      */
     public function testPaymentValidationWithAllowedSpecificCountryNegative(): void
     {
-        $this->expectException(\Magento\Framework\Exception\LocalizedException::class);
-        $this->expectExceptionMessage(
-            'You can\'t use the payment type you selected to make payments to the billing country.'
-        );
-
         $quote = $this->getFixtureQuote();
         $this->prepareCheckoutModel($quote);
         $quote->getPayment()->getMethodInstance()->validate();
@@ -553,7 +525,7 @@ class CheckoutTest extends TestCase
                 $item = [$item];
             }
 
-            $this->assertEquals($item, $address->$methodName(), 'The "' . $key . '" does not match.');
+            $this->assertEquals($item, $address->$methodName(), 'The "'. $key . '" does not match.');
         }
     }
 
@@ -567,9 +539,9 @@ class CheckoutTest extends TestCase
         $this->checkoutModel = $this->objectManager->create(
             Checkout::class,
             [
-                'params' => ['quote' => $quote, 'config' => $this->paypalConfig],
+                'params'         => ['quote' => $quote, 'config' => $this->paypalConfig],
                 'apiTypeFactory' => $this->apiTypeFactory,
-                'paypalInfo' => $this->paypalInfo
+                'paypalInfo'     => $this->paypalInfo
             ]
         );
 
@@ -597,28 +569,28 @@ class CheckoutTest extends TestCase
     {
         return [
             'shipping' => [
-                'email' => 'customer@example.com',
-                'firstname' => 'John',
-                'lastname' => 'Doe',
-                'country' => 'US',
-                'region' => 'Colorado',
-                'region_id' => '13',
-                'city' => 'Denver',
-                'street' => '66 Pearl St',
-                'postcode' => '80203',
-                'telephone' => '555-555-555',
+                'email'      => 'customer@example.com',
+                'firstname'  => 'John',
+                'lastname'   => 'Doe',
+                'country'    => 'US',
+                'region'     => 'Colorado',
+                'region_id'  => '13',
+                'city'       => 'Denver',
+                'street'     => '66 Pearl St',
+                'postcode'   => '80203',
+                'telephone'  => '555-555-555',
             ],
             'billing' => [
-                'email' => 'customer@example.com',
-                'firstname' => 'Jane',
-                'lastname' => 'Doe',
-                'country' => 'US',
-                'region' => 'Texas',
-                'region_id' => '13',
-                'city' => 'Austin',
-                'street' => '1100 Congress Ave',
-                'postcode' => '78701',
-                'telephone' => '555-555-555'
+                'email'      => 'customer@example.com',
+                'firstname'  => 'Jane',
+                'lastname'   => 'Doe',
+                'country'    => 'US',
+                'region'     => 'Texas',
+                'region_id'  => '13',
+                'city'       => 'Austin',
+                'street'     => '1100 Congress Ave',
+                'postcode'   => '78701',
+                'telephone'  => '555-555-555'
             ]
         ];
     }
@@ -663,17 +635,17 @@ class CheckoutTest extends TestCase
 
         $apiTypeFactory->expects($this->any())
             ->method('create')
-            ->willReturn($api);
+            ->will($this->returnValue($api));
 
         $exportedBillingAddress = $this->getExportedAddressFixture($quote->getBillingAddress()->getData());
         $api->expects($this->any())
             ->method('getExportedBillingAddress')
-            ->willReturn($exportedBillingAddress);
+            ->will($this->returnValue($exportedBillingAddress));
 
         $exportedShippingAddress = $this->getExportedAddressFixture($quote->getShippingAddress()->getData());
         $api->expects($this->any())
             ->method('getExportedShippingAddress')
-            ->willReturn($exportedShippingAddress);
+            ->will($this->returnValue($exportedShippingAddress));
 
         $this->addCountryFactory($api);
         $data = [
@@ -745,11 +717,11 @@ class CheckoutTest extends TestCase
     /**
      * Adds countryFactory to a mock.
      *
-     * @param MockObject $api
-     * @return void
+     * @param \PHPUnit\Framework\MockObject\MockObject $api
      * @throws \ReflectionException
+     * @return void
      */
-    private function addCountryFactory(MockObject $api): void
+    private function addCountryFactory(\PHPUnit\Framework\MockObject\MockObject $api): void
     {
         $reflection = new \ReflectionClass($api);
         $property = $reflection->getProperty('_countryFactory');

@@ -44,22 +44,18 @@ class UpdateConfigurableCartItemsTest extends GraphQlAbstract
     private $quoteResource;
 
     /**
-     * @param string $itemArgName
-     * @param string $reservedOrderId
-     * @dataProvider updateConfigurableCartItemQuantityDataProvider
      * @magentoApiDataFixture Magento/ConfigurableProduct/_files/quote_with_configurable_product.php
      */
-    public function testUpdateConfigurableCartItemQuantity(string $itemArgName, string $reservedOrderId)
+    public function testUpdateConfigurableCartItemQuantity()
     {
+        $reservedOrderId = 'test_cart_with_configurable';
         $maskedQuoteId = $this->getMaskedQuoteIdByReservedOrderId->execute($reservedOrderId);
 
         $productSku = 'simple_10';
         $newQuantity = 123;
-        $quoteItemId = $this->getQuoteItemBySku($productSku, $reservedOrderId)->getId();
-        if ($itemArgName === 'cart_item_uid') {
-            $quoteItemId = base64_encode($quoteItemId);
-        }
-        $query = $this->getQuery($itemArgName, $maskedQuoteId, $quoteItemId, $newQuantity);
+        $quoteItem = $this->getQuoteItemBySku($productSku, $reservedOrderId);
+
+        $query = $this->getQuery($maskedQuoteId, (int)$quoteItem->getId(), $newQuantity);
         $response = $this->graphQlMutation($query);
 
         self::assertArrayHasKey('updateCartItems', $response);
@@ -68,22 +64,9 @@ class UpdateConfigurableCartItemsTest extends GraphQlAbstract
     }
 
     /**
-     * Data provider for testUpdateConfigurableCartItemQuantity
-     *
-     * @return array
-     */
-    public function updateConfigurableCartItemQuantityDataProvider(): array
-    {
-        return [
-            ['cart_item_id', 'test_cart_with_configurable'],
-            ['cart_item_uid', 'test_cart_with_configurable'],
-        ];
-    }
-
-    /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $objectManager = Bootstrap::getObjectManager();
         $this->getMaskedQuoteIdByReservedOrderId = $objectManager->get(GetMaskedQuoteIdByReservedOrderId::class);
@@ -93,26 +76,20 @@ class UpdateConfigurableCartItemsTest extends GraphQlAbstract
     }
 
     /**
-     * @param string $itemArgName
      * @param string $maskedQuoteId
-     * @param string $quoteItemId
+     * @param int $quoteItemId
      * @param int $newQuantity
      * @return string
      */
-    private function getQuery(string $itemArgName, string $maskedQuoteId, string $quoteItemId, int $newQuantity): string
+    private function getQuery(string $maskedQuoteId, int $quoteItemId, int $newQuantity): string
     {
-        if (is_numeric($quoteItemId)) {
-            $quoteItemId = (int) $quoteItemId;
-        } else {
-            $quoteItemId = '"' . $quoteItemId . '"';
-        }
         return <<<QUERY
 mutation {
   updateCartItems(input: {
     cart_id:"$maskedQuoteId"
     cart_items: [
       {
-        $itemArgName: $quoteItemId
+        cart_item_id: $quoteItemId
         quantity: $newQuantity
       }
     ]

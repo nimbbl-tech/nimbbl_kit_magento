@@ -6,8 +6,6 @@
 namespace Magento\Config\Model\Config\Backend\Admin;
 
 use Magento\Config\Model\Config\Reader\Source\Deployed\DocumentRoot;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\Filesystem;
 
 /**
  * @magentoAppArea adminhtml
@@ -27,7 +25,7 @@ class RobotsTest extends \PHPUnit\Framework\TestCase
     /**
      * Initialize model
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
 
@@ -36,7 +34,10 @@ class RobotsTest extends \PHPUnit\Framework\TestCase
         $this->model->setPath('design/search_engine_robots/custom_instructions');
         $this->model->afterLoad();
 
-        $this->rootDirectory = $objectManager->get(Filesystem::class)->getDirectoryRead(DirectoryList::PUB);
+        $documentRootPath = $objectManager->get(DocumentRoot::class)->getPath();
+        $this->rootDirectory = $objectManager->get(
+            \Magento\Framework\Filesystem::class
+        )->getDirectoryRead($documentRootPath);
     }
 
     /**
@@ -56,8 +57,7 @@ class RobotsTest extends \PHPUnit\Framework\TestCase
      */
     public function testAfterLoadRobotsTxtExists()
     {
-        $value = $this->model->getValue();
-        $this->assertEquals('Sitemap: http://store.com/sitemap.xml', $value);
+        $this->assertEquals('Sitemap: http://store.com/sitemap.xml', $this->model->getValue());
     }
 
     /**
@@ -92,14 +92,13 @@ class RobotsTest extends \PHPUnit\Framework\TestCase
     {
         $robotsTxt = "User-Agent: *\nDisallow: /checkout";
         $this->model->setValue($robotsTxt)->save();
-        $file = $this->rootDirectory->getAbsolutePath('robots.txt');
-        $this->assertStringEqualsFile($file, $robotsTxt);
+        $this->assertStringEqualsFile($this->rootDirectory->getAbsolutePath('robots.txt'), $robotsTxt);
     }
 
     /**
      * Remove created robots.txt
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
         require 'Magento/Config/Model/_files/no_robots_txt.php';
     }

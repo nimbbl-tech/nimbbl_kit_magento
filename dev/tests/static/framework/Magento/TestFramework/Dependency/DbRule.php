@@ -7,9 +7,6 @@
  */
 namespace Magento\TestFramework\Dependency;
 
-/**
- * Class to get DB dependencies information
- */
 class DbRule implements \Magento\TestFramework\Dependency\RuleInterface
 {
     /**
@@ -40,7 +37,7 @@ class DbRule implements \Magento\TestFramework\Dependency\RuleInterface
      */
     public function getDependencyInfo($currentModule, $fileType, $file, &$contents)
     {
-        if ('php' !== $fileType || !preg_match('#.*/(Setup|Resource|Query)/.*\.php$#', $file)) {
+        if ('php' != $fileType || !preg_match('#.*/(Setup|Resource)/.*\.php$#', $file)) {
             return [];
         }
 
@@ -55,7 +52,7 @@ class DbRule implements \Magento\TestFramework\Dependency\RuleInterface
                 }
                 if (strtolower($currentModule) !== strtolower($this->_moduleTableMap[$table])) {
                     $dependenciesInfo[] = [
-                        'modules' => [$this->_moduleTableMap[$table]],
+                        'module' => $this->_moduleTableMap[$table],
                         'type' => \Magento\TestFramework\Dependency\RuleInterface::TYPE_HARD,
                         'source' => $table,
                     ];
@@ -64,7 +61,7 @@ class DbRule implements \Magento\TestFramework\Dependency\RuleInterface
         }
         foreach ($unKnowTables as $tables) {
             foreach ($tables as $table) {
-                $dependenciesInfo[] = ['modules' => ['Unknown'], 'source' => $table];
+                $dependenciesInfo[] = ['module' => 'Unknown', 'source' => $table];
             }
         }
         return $dependenciesInfo;

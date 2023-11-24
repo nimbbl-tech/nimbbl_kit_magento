@@ -6,8 +6,6 @@
 declare(strict_types=1);
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
-use Magento\Framework\Registry;
-use Magento\Tax\Api\TaxClassManagementInterface;
 use Magento\Tax\Model\ClassModel;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\Framework\ObjectManagerInterface;
@@ -20,6 +18,10 @@ use Magento\Tax\Api\TaxRateRepositoryInterface;
 
 /** @var ObjectManagerInterface $objectManager */
 $objectManager = Bootstrap::getObjectManager();
+$taxClasses = [
+    'CustomerTaxClass',
+    'ProductTaxClass',
+];
 $taxRuleRepository = $objectManager->get(TaxRuleRepositoryInterface::class);
 /** @var SearchCriteriaBuilder $searchBuilder */
 $searchBuilder = $objectManager->get(SearchCriteriaBuilder::class);
@@ -27,11 +29,6 @@ $searchCriteria = $searchBuilder->addFilter(Rule::KEY_CODE, 'Test Rule')
     ->create();
 $taxRules = $taxRuleRepository->getList($searchCriteria)
     ->getItems();
-
-/** @var Registry $registry */
-$registry = $objectManager->get(Registry::class);
-$registry->unregister('isSecureArea');
-$registry->register('isSecureArea', true);
 foreach ($taxRules as $taxRule) {
     try {
         $taxRuleRepository->delete($taxRule);
@@ -39,17 +36,12 @@ foreach ($taxRules as $taxRule) {
         //Rule already removed
     }
 }
-
-/** @var TaxClassRepositoryInterface $taxClassRepository */
+$searchCriteria = $searchBuilder->addFilter(ClassModel::KEY_NAME, $taxClasses, 'in')
+    ->create();
+/** @var TaxClassRepositoryInterface $groupRepository */
 $taxClassRepository = $objectManager->get(TaxClassRepositoryInterface::class);
-$searchCriteria = $searchBuilder->addFilter(ClassModel::KEY_NAME, 'CustomerTaxClass')
-    ->addFilter(ClassModel::KEY_TYPE, TaxClassManagementInterface::TYPE_CUSTOMER)
-    ->create();
-$taxClasses = $taxClassRepository->getList($searchCriteria)->getItems();
-$searchCriteria = $searchBuilder->addFilter(ClassModel::KEY_NAME, 'ProductTaxClass')
-    ->addFilter(ClassModel::KEY_TYPE, TaxClassManagementInterface::TYPE_PRODUCT)
-    ->create();
-$taxClasses = array_merge($taxClasses, $taxClassRepository->getList($searchCriteria)->getItems());
+$taxClasses = $taxClassRepository->getList($searchCriteria)
+    ->getItems();
 foreach ($taxClasses as $taxClass) {
     try {
         $taxClassRepository->delete($taxClass);
@@ -57,7 +49,6 @@ foreach ($taxClasses as $taxClass) {
         //TaxClass already removed
     }
 }
-
 $searchCriteria = $searchBuilder->addFilter(Rate::KEY_CODE, 'Denmark')
     ->create();
 /** @var TaxRateRepositoryInterface $groupRepository */
@@ -71,5 +62,3 @@ foreach ($taxRates as $taxRate) {
         //TaxRate already removed
     }
 }
-$registry->unregister('isSecureArea');
-$registry->register('isSecureArea', false);

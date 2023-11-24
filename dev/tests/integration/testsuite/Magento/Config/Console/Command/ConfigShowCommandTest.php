@@ -6,23 +6,24 @@
 
 namespace Magento\Config\Console\Command;
 
-use Magento\Config\Model\Config\Structure;
 use Magento\Framework\App\DeploymentConfig\FileReader;
 use Magento\Framework\App\DeploymentConfig\Writer;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Config\File\ConfigFilePool;
 use Magento\Framework\Console\Cli;
 use Magento\Framework\Filesystem;
+use Magento\Framework\ObjectManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-/**
- * Test for \Magento\Config\Console\Command\ConfigShowCommand.
- */
-class ConfigShowCommandTest extends TestCase
+class ConfigShowCommandTest extends \PHPUnit\Framework\TestCase
 {
+    /**
+     * @var ObjectManagerInterface
+     */
+    private $objectManager;
+
     /**
      * @var CommandTester
      */
@@ -64,21 +65,15 @@ class ConfigShowCommandTest extends TestCase
     private $envConfig;
 
     /**
-     * @var Structure
-     */
-    private $structure;
-
-    /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    public function setUp()
     {
-        $objectManager = Bootstrap::getObjectManager();
-        $this->configFilePool = $objectManager->get(ConfigFilePool::class);
-        $this->filesystem = $objectManager->get(Filesystem::class);
-        $this->reader = $objectManager->get(FileReader::class);
-        $this->writer = $objectManager->get(Writer::class);
-        $this->structure = $objectManager->get(Structure::class);
+        $this->objectManager = Bootstrap::getObjectManager();
+        $this->configFilePool = $this->objectManager->get(ConfigFilePool::class);
+        $this->filesystem = $this->objectManager->get(Filesystem::class);
+        $this->reader = $this->objectManager->get(FileReader::class);
+        $this->writer = $this->objectManager->get(Writer::class);
 
         $this->config = $this->loadConfig();
         $this->envConfig = $this->loadEnvConfig();
@@ -94,27 +89,21 @@ class ConfigShowCommandTest extends TestCase
         $_ENV['CONFIG__WEBSITES__BASE__WEB__TEST2__TEST_VALUE_4'] = 'value4.env.website_base.test';
         $_ENV['CONFIG__STORES__DEFAULT__WEB__TEST2__TEST_VALUE_4'] = 'value4.env.store_default.test';
 
-        $command = $objectManager->create(ConfigShowCommand::class);
+        $command = $this->objectManager->create(ConfigShowCommand::class);
         $this->commandTester = new CommandTester($command);
     }
 
     /**
-     * Test execute config show command
-     *
      * @param string $scope
      * @param string $scopeCode
      * @param int $resultCode
      * @param array $configs
-     * @return void
-     *
      * @magentoDbIsolation enabled
      * @magentoDataFixture Magento/Config/_files/config_data.php
      * @dataProvider executeDataProvider
      */
-    public function testExecute($scope, $scopeCode, $resultCode, array $configs): void
+    public function testExecute($scope, $scopeCode, $resultCode, array $configs)
     {
-        $this->setConfigPaths();
-
         foreach ($configs as $inputPath => $configValue) {
             $arguments = [
                 ConfigShowCommand::INPUT_ARGUMENT_PATH => $inputPath
@@ -136,44 +125,9 @@ class ConfigShowCommandTest extends TestCase
 
             $commandOutput = $this->commandTester->getDisplay();
             foreach ($configValue as $value) {
-                $this->assertStringContainsString($value, $commandOutput);
+                $this->assertContains($value, $commandOutput);
             }
         }
-    }
-
-    /**
-     * Set config paths to structure
-     *
-     * @return void
-     */
-    private function setConfigPaths(): void
-    {
-        $reflection = new \ReflectionClass(Structure::class);
-        $mappedPaths = $reflection->getProperty('mappedPaths');
-        $mappedPaths->setAccessible(true);
-        $mappedPaths->setValue($this->structure, $this->getConfigPaths());
-    }
-
-    /**
-     * Returns config paths
-     *
-     * @return array
-     */
-    private function getConfigPaths(): array
-    {
-        $configs = [
-            'web/test/test_value_1',
-            'web/test/test_value_2',
-            'web/test2/test_value_3',
-            'web/test2/test_value_4',
-            'carriers/fedex/account',
-            'paypal/fetch_reports/ftp_password',
-            'web/test',
-            'web/test2',
-            'web',
-        ];
-
-        return array_flip($configs);
     }
 
     /**
@@ -286,7 +240,7 @@ class ConfigShowCommandTest extends TestCase
                 Cli::RETURN_FAILURE,
                 [
                     'web/test/test_wrong_value' => [
-                        'The "web/test/test_wrong_value" path doesn\'t exist. Verify and try again.'
+                        'Configuration for path: "web/test/test_wrong_value" doesn\'t exist'
                     ],
                 ]
             ],
@@ -296,7 +250,7 @@ class ConfigShowCommandTest extends TestCase
                 Cli::RETURN_FAILURE,
                 [
                     'web/test/test_wrong_value' => [
-                        'The "web/test/test_wrong_value" path doesn\'t exist. Verify and try again.'
+                        'Configuration for path: "web/test/test_wrong_value" doesn\'t exist'
                     ],
                 ]
             ],
@@ -349,7 +303,7 @@ class ConfigShowCommandTest extends TestCase
         return $this->reader->load(ConfigFilePool::APP_ENV);
     }
 
-    protected function tearDown(): void
+    public function tearDown()
     {
         $_ENV = $this->env;
 

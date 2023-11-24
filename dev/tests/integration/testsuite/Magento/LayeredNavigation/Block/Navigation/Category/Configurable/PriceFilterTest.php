@@ -32,7 +32,7 @@ class PriceFilterTest extends AbstractFiltersTest
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
         $this->moduleManager = $this->objectManager->get(Manager::class);
@@ -76,7 +76,7 @@ class PriceFilterTest extends AbstractFiltersTest
                     ],
                     [
                         'label' => '<span class="price">$60.00</span> and above',
-                        'value' => '60-70',
+                        'value' => '60-',
                         'count' => 1,
                     ],
                 ],
@@ -94,7 +94,7 @@ class PriceFilterTest extends AbstractFiltersTest
                     ],
                     [
                         'label' => '<span class="price">$50.00</span> and above',
-                        'value' => '50-60',
+                        'value' => '50-',
                         'count' => 1,
                     ],
                 ],

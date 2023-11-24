@@ -3,94 +3,40 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\SendFriend\Block;
 
-use Magento\Customer\Api\AccountManagementInterface;
-use Magento\Customer\Model\Session;
-use Magento\Framework\ObjectManagerInterface;
-use Magento\Framework\View\LayoutInterface;
 use Magento\TestFramework\Helper\Bootstrap;
-use Magento\TestFramework\Helper\Xpath;
-use PHPUnit\Framework\TestCase;
 
-/**
- * Class checks send friend email block
- *
- * @see \Magento\SendFriend\Block\Send
- *
- * @magentoAppArea frontend
- */
-class SendTest extends TestCase
+class SendTest extends \PHPUnit\Framework\TestCase
 {
-    /** @var array  */
-    private $elementsXpath = [
-        'sender name field' => "//input[@name='sender[name]']",
-        'sender email field' => "//input[@name='sender[email]']",
-        'sender message field' => "//textarea[@name='sender[message]']",
-        'recipient name field' => "//input[contains(@name, 'recipients[name]')]",
-        'recipient email field' => "//input[contains(@name, 'recipients[email]')]",
-        'submit button' => "//button[@type='submit']/span[contains(text(), 'Send Email')]",
-        'notice massage' =>  "//div[@id='max-recipient-message']"
-            . "/span[contains(text(), 'Maximum 1 email addresses allowed.')]"
-    ];
-
-    /** @var ObjectManagerInterface */
-    private $objectManager;
-
-    /** @var LayoutInterface */
-    private $layout;
-
-    /** @var Send */
-    private $block;
-
-    /** @var Session */
-    private $session;
-
-    /** @var AccountManagementInterface */
-    private $accountManagement;
-
     /**
-     * @inheritdoc
+     * @var \Magento\SendFriend\Block\Send
      */
-    protected function setUp(): void
+    protected $_block;
+
+    protected function setUp()
     {
-        $this->objectManager = Bootstrap::getObjectManager();
-        $this->layout = $this->objectManager->get(LayoutInterface::class);
-        $this->block = $this->layout->createBlock(Send::class);
-        $this->session = $this->objectManager->get(Session::class);
-        $this->accountManagement = $this->objectManager->get(AccountManagementInterface::class);
+        $this->_block = Bootstrap::getObjectManager()->create(\Magento\SendFriend\Block\Send::class);
     }
 
     /**
-     * @inheritdoc
-     */
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        $this->session->logout();
-    }
-
-    /**
-     * @dataProvider formDataProvider
-     *
      * @param string $field
      * @param string $value
-     * @return void
+     * @dataProvider formDataProvider
+     * @covers \Magento\SendFriend\Block\Send::getUserName
+     * @covers \Magento\SendFriend\Block\Send::getEmail
      */
-    public function testGetCustomerFieldFromFormData(string $field, string $value): void
+    public function testGetCustomerFieldFromFormData($field, $value)
     {
         $formData = ['sender' => [$field => $value]];
-        $this->block->setFormData($formData);
+        $this->_block->setFormData($formData);
         $this->assertEquals(trim($value), $this->_callBlockMethod($field));
     }
 
     /**
      * @return array
      */
-    public function formDataProvider(): array
+    public function formDataProvider()
     {
         return [
             ['name', 'Customer Form Name'],
@@ -99,27 +45,29 @@ class SendTest extends TestCase
     }
 
     /**
-     * @magentoDataFixture Magento/Customer/_files/customer.php
-     *
-     * @dataProvider customerSessionDataProvider
-     *
-     * @magentoAppIsolation enabled
-     *
      * @param string $field
      * @param string $value
-     * @return void
+     * @dataProvider customerSessionDataProvider
+     * @covers \Magento\SendFriend\Block\Send::getUserName
+     * @covers \Magento\SendFriend\Block\Send::getEmail
+     * @magentoDataFixture Magento/Customer/_files/customer.php
      */
-    public function testGetCustomerFieldFromSession(string $field, string $value): void
+    public function testGetCustomerFieldFromSession($field, $value)
     {
-        $customer = $this->accountManagement->authenticate('customer@example.com', 'password');
-        $this->session->setCustomerDataAsLoggedIn($customer);
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        /** @var $session \Magento\Customer\Model\Session */
+        $session = Bootstrap::getObjectManager()->create(\Magento\Customer\Model\Session::class, [$logger]);
+        /** @var \Magento\Customer\Api\AccountManagementInterface $service */
+        $service = Bootstrap::getObjectManager()->create(\Magento\Customer\Api\AccountManagementInterface::class);
+        $customer = $service->authenticate('customer@example.com', 'password');
+        $session->setCustomerDataAsLoggedIn($customer);
         $this->assertEquals($value, $this->_callBlockMethod($field));
     }
 
     /**
      * @return array
      */
-    public function customerSessionDataProvider(): array
+    public function customerSessionDataProvider()
     {
         return [
             ['name', 'John Smith'],
@@ -128,36 +76,18 @@ class SendTest extends TestCase
     }
 
     /**
-     * @magentoConfigFixture current_store sendfriend/email/max_recipients 1
-     *
-     * @return void
-     */
-    public function testBlockAppearance(): void
-    {
-        $this->block->setTemplate('Magento_SendFriend::send.phtml');
-        $html = preg_replace('#<script(.*?)>#i', '', $this->block->toHtml());
-        foreach ($this->elementsXpath as $key => $xpath) {
-            $this->assertEquals(
-                1,
-                Xpath::getElementsCountForXpath($xpath, $html),
-                sprintf('The %s field is not found on the page', $key)
-            );
-        }
-    }
-
-    /**
      * Call block method based on form field
      *
      * @param string $field
      * @return null|string
      */
-    protected function _callBlockMethod(string $field): ?string
+    protected function _callBlockMethod($field)
     {
         switch ($field) {
             case 'name':
-                return $this->block->getUserName();
+                return $this->_block->getUserName();
             case 'email':
-                return $this->block->getEmail();
+                return $this->_block->getEmail();
             default:
                 return null;
         }

@@ -23,7 +23,7 @@ class DocumentationGenerator
     public function generateDocumentation($httpMethod, $resourcePath, $arguments, $response)
     {
         $content = $this->generateHtmlContent($httpMethod, $resourcePath, $arguments, $response);
-        $filePath = $this->generateFileName();
+        $filePath = $this->generateFileName($resourcePath);
         if ($filePath === null) {
             return;
         }

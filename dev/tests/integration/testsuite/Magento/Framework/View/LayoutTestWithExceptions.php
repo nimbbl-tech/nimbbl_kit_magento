@@ -5,31 +5,21 @@
  */
 namespace Magento\Framework\View;
 
-use Magento\Framework\App\State;
-use Magento\Framework\Exception\LocalizedException;
-use Magento\Framework\View\Layout\Element;
-use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
+use \Magento\Framework\App\State;
 
-/**
- * Class to test Layout model functionality with exceptions
- */
-class LayoutTestWithExceptions extends TestCase
+class LayoutTestWithExceptions extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var Layout
+     * @var \Magento\Framework\View\Layout
      */
     protected $layout;
 
-    /**
-     * @inheritdoc
-     */
-    protected function setUp(): void
+    public function setUp()
     {
-        $objectManager = Bootstrap::getObjectManager();
-        $layoutFactory = $objectManager->get(LayoutFactory::class);
+        $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        $layoutFactory = $objectManager->get(\Magento\Framework\View\LayoutFactory::class);
         $this->layout = $layoutFactory->create();
-        $layoutElement = new Element(
+        $layoutElement = new \Magento\Framework\View\Layout\Element(
             __DIR__ . '/_files/layout_with_exceptions/layout.xml',
             0,
             true
@@ -40,24 +30,20 @@ class LayoutTestWithExceptions extends TestCase
     }
 
     /**
-     * Test to Create structure of elements from the loaded XML configuration with exception
+     * @expectedException \Magento\Framework\Exception\LocalizedException
+     * @expectedExceptionMessage Construction problem.
      */
     public function testProcessWithExceptionsDeveloperMode()
     {
-        $this->expectException(LocalizedException::class);
-        $this->expectExceptionMessage('Construction problem.');
-
         $this->layout->generateElements();
     }
 
     /**
-     * Test to Get all blocks marked for output with exceptions
-     *
      * @magentoAppIsolation enabled
      */
     public function testProcessWithExceptions()
     {
-        Bootstrap::getObjectManager()->get(State::class)
+        \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(\Magento\Framework\App\State::class)
             ->setMode(State::MODE_DEFAULT);
 
         $this->layout->generateElements();

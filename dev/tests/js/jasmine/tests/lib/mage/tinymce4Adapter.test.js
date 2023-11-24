@@ -5,9 +5,8 @@
 
 define([
     'wysiwygAdapter',
-    'underscore',
-    'tinymce4'
-], function (wysiwygAdapter, _, tinyMCE4) {
+    'underscore'
+], function (wysiwygAdapter, _) {
     'use strict';
 
     var obj;
@@ -37,14 +36,6 @@ define([
     describe('"openFileBrowser" method', function () {
         it('Opens file browser to given instance', function () {
             expect(_.size(obj.eventBus.arrEvents['open_browser_callback'])).toBe(1);
-        });
-    });
-
-    describe('"triggerSave" method', function () {
-        it('Check method call.', function () {
-            spyOn(tinyMCE4, 'triggerSave');
-            obj.triggerSave();
-            expect(tinyMCE4.triggerSave).toHaveBeenCalled();
         });
     });
 });

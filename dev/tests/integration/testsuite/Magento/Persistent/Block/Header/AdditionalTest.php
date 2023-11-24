@@ -6,47 +6,41 @@
 
 namespace Magento\Persistent\Block\Header;
 
-use Magento\Customer\Model\Session;
-use Magento\Framework\ObjectManagerInterface;
-use Magento\Persistent\Helper\Session as SessionHelper;
-use Magento\TestFramework\Helper\Bootstrap;
-use PHPUnit\Framework\TestCase;
-
 /**
  * @magentoDataFixture Magento/Persistent/_files/persistent.php
  */
-class AdditionalTest extends TestCase
+class AdditionalTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var Additional
+     * @var \Magento\Persistent\Block\Header\Additional
      */
     protected $_block;
 
     /**
-     * @var SessionHelper
+     * @var \Magento\Persistent\Helper\Session
      */
     protected $_persistentSessionHelper;
 
     /**
-     * @var Session
+     * @var \Magento\Customer\Model\Session
      */
     protected $_customerSession;
 
     /**
-     * @var ObjectManagerInterface
+     * @var \Magento\Framework\ObjectManagerInterface
      */
     protected $_objectManager;
 
-    protected function setUp(): void
+    public function setUp()
     {
-        $this->_objectManager = Bootstrap::getObjectManager();
+        $this->_objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
 
-        /** @var Session $persistentSessionHelper */
-        $this->_persistentSessionHelper = $this->_objectManager->create(Session::class);
+        /** @var \Magento\Persistent\Helper\Session $persistentSessionHelper */
+        $this->_persistentSessionHelper = $this->_objectManager->create(\Magento\Persistent\Helper\Session::class);
 
-        $this->_customerSession = $this->_objectManager->get(Session::class);
+        $this->_customerSession = $this->_objectManager->get(\Magento\Customer\Model\Session::class);
 
-        $this->_block = $this->_objectManager->create(Additional::class);
+        $this->_block = $this->_objectManager->create(\Magento\Persistent\Block\Header\Additional::class);
     }
 
     /**
@@ -60,7 +54,12 @@ class AdditionalTest extends TestCase
     public function testToHtml()
     {
         $this->_customerSession->loginById(1);
-        $this->assertStringContainsString($this->_block->getHref(), $this->_block->toHtml());
+        $translation = __('Not you?');
+
+        $this->assertContains(
+            '<a href="' . $this->_block->getHref() . '">' . $translation . '</a>',
+            $this->_block->toHtml()
+        );
         $this->_customerSession->logout();
     }
 }

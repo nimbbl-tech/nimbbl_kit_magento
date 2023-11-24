@@ -5,18 +5,12 @@
  */
 namespace Magento\TestFramework;
 
-use Magento\Framework\App\DeploymentConfig;
 use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\App\ObjectManager\ConfigLoader;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem\DriverPool;
-use Magento\Framework\Interception\PluginListInterface;
-use Magento\Framework\ObjectManager\ConfigLoaderInterface;
-use Magento\TestFramework\App\EnvironmentFactory;
-use Magento\TestFramework\Db\ConnectionAdapter;
 
 /**
- * Configure ObjectManagerFactory for testing purpose
+ * Class ObjectManagerFactory
  *
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
@@ -27,7 +21,7 @@ class ObjectManagerFactory extends \Magento\Framework\App\ObjectManagerFactory
      *
      * @var string
      */
-    protected $_locatorClassName = ObjectManager::class;
+    protected $_locatorClassName = \Magento\TestFramework\ObjectManager::class;
 
     /**
      * Config class name
@@ -39,7 +33,7 @@ class ObjectManagerFactory extends \Magento\Framework\App\ObjectManagerFactory
     /**
      * @var string
      */
-    protected $envFactoryClassName = EnvironmentFactory::class;
+    protected $envFactoryClassName = \Magento\TestFramework\App\EnvironmentFactory::class;
 
     /**
      * @var array
@@ -56,25 +50,21 @@ class ObjectManagerFactory extends \Magento\Framework\App\ObjectManagerFactory
      */
     public function restore(ObjectManager $objectManager, $directoryList, array $arguments)
     {
-        ObjectManager::setInstance($objectManager);
+        \Magento\TestFramework\ObjectManager::setInstance($objectManager);
         $this->directoryList = $directoryList;
         $objectManager->configure($this->_primaryConfigData);
-        $objectManager->addSharedInstance($this->directoryList, DirectoryList::class);
-        $objectManager->addSharedInstance(
-            $this->directoryList,
-            \Magento\Framework\Filesystem\DirectoryList::class
-        );
+        $objectManager->addSharedInstance($this->directoryList, \Magento\Framework\App\Filesystem\DirectoryList::class);
+        $objectManager->addSharedInstance($this->directoryList, \Magento\Framework\Filesystem\DirectoryList::class);
         $deploymentConfig = $this->createDeploymentConfig($directoryList, $this->configFilePool, $arguments);
         $this->factory->setArguments($arguments);
-        $objectManager->addSharedInstance($deploymentConfig, DeploymentConfig::class);
+        $objectManager->addSharedInstance($deploymentConfig, \Magento\Framework\App\DeploymentConfig::class);
         $objectManager->addSharedInstance(
-            $objectManager->get(ConfigLoader::class),
-            ConfigLoaderInterface::class,
-            true
+            $objectManager->get(\Magento\Framework\App\ObjectManager\ConfigLoader::class),
+            \Magento\Framework\ObjectManager\ConfigLoaderInterface::class
         );
-        $objectManager->get(PluginListInterface::class)->reset();
+        $objectManager->get(\Magento\Framework\Interception\PluginListInterface::class)->reset();
         $objectManager->configure(
-            $objectManager->get(ConfigLoader::class)->load('global')
+            $objectManager->get(\Magento\Framework\App\ObjectManager\ConfigLoader::class)->load('global')
         );
 
         return $objectManager;
@@ -83,7 +73,7 @@ class ObjectManagerFactory extends \Magento\Framework\App\ObjectManagerFactory
     /**
      * Load primary config
      *
-     * @param DirectoryList $directoryList
+     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
      * @param DriverPool $driverPool
      * @param mixed $argumentMapper
      * @param string $appMode
@@ -95,7 +85,7 @@ class ObjectManagerFactory extends \Magento\Framework\App\ObjectManagerFactory
             $this->_primaryConfigData = array_replace(
                 parent::_loadPrimaryConfig($directoryList, $driverPool, $argumentMapper, $appMode),
                 [
-                    'default_setup' => ['type' => ConnectionAdapter::class]
+                    'default_setup' => ['type' => \Magento\TestFramework\Db\ConnectionAdapter::class]
                 ]
             );
             $diPreferences = [];

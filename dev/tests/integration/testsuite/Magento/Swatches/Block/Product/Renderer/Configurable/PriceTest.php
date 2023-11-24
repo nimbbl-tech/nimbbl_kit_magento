@@ -46,7 +46,7 @@ class PriceTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
 
@@ -61,7 +61,7 @@ class PriceTest extends TestCase
     /**
      * @inheritdoc
      */
-    protected function tearDown(): void
+    protected function tearDown()
     {
         $this->registry->unregister('product');
 
@@ -116,7 +116,6 @@ class PriceTest extends TestCase
                 ],
                 'expected_data' => [
                     [
-                        'baseOldPrice' => ['amount' => 150],
                         'oldPrice' => ['amount' => 150],
                         'basePrice' => ['amount' => 50],
                         'finalPrice' => ['amount' => 50],
@@ -124,7 +123,6 @@ class PriceTest extends TestCase
                         'msrpPrice' => ['amount' => null],
                     ],
                     [
-                        'baseOldPrice' => ['amount' => 150],
                         'oldPrice' => ['amount' => 150],
                         'basePrice' => ['amount' => 58.55],
                         'finalPrice' => ['amount' => 58.55],
@@ -132,7 +130,6 @@ class PriceTest extends TestCase
                         'msrpPrice' => ['amount' => null],
                     ],
                     [
-                        'baseOldPrice' => ['amount' => 150],
                         'oldPrice' => ['amount' => 150],
                         'basePrice' => ['amount' => 75],
                         'finalPrice' => ['amount' => 75],
