@@ -136,16 +136,16 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController implements CsrfA
                     return;
                 }
 
-                
-                $verified = $this->api->util->verifyPaymentSignature([
-                    'nimbbl_signature' => $webhook_data['nimbbl_signature'],
-                    'nimbbl_transaction_id' => $webhook_data['nimbbl_transaction_id'],
-                    'merchant_order_id' => $webhook_data['order']['invoice_id'],
-                ]);
+                $this->logger->info("Nimbbl Webhook Data : ".json_encode($webhook_data));
+                $verified = $this->api->util->verifyPaymentSignature($webhook_data, $this->order->getNimbblOrderAmount());
                 // $this->api->utility->verifyWebhookSignature(json_encode($post), $webhook_data['nimbbl_signature'], $webhookSecret);
                 
                 if($verified){
+                    $this->logger->info("Nimbbl Payment Signature Verification Status : Success for Webhook");
                     return $this->orderPaid($webhook_data);
+                }
+                else{
+                    $this->logger->info("Nimbbl Payment Signature Verification Status : Failed for Webhook");
                 }
             }
         }

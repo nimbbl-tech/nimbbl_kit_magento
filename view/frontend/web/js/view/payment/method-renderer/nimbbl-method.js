@@ -349,7 +349,11 @@ define(
                         console.log(response);
                         if (response.status === 'failed') {
                             self.isPaymentProcessing.reject("Payment Closed: " + response.reason);
-                        } else {
+                        }
+                        else if (response.status === 'pending'){
+                            self.isPaymentProcessing.reject("Payment Pending: "+response.reason);
+                        } 
+                        else {
 
                             data['nimbbl_transaction_id'] = response.nimbbl_transaction_id;
                             data['nimbbl_signature'] = response.nimbbl_signature;
