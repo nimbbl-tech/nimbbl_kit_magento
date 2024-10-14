@@ -1,0 +1,30 @@
+<?php
+/** @var $block \Nimbbl\Magento\Block\Payment\Info */
+$title = $block->escapeHtml($block->getMethod()->getTitle());
+
+$fieldToDisplay = [
+    'transaction_id',
+    'status',
+    'payment_partner',
+    'transaction_amount',
+    'payment_mode',
+    'masked_card',
+];
+
+?>
+<?php if ($block->getInfo()->getAdditionalInformation()) : ?>
+    <table class="data-table admin__table-secondary">
+        <?php foreach ($block->getInfo()->getAdditionalInformation() as $label => $value) : ?>
+            <?php if (in_array($label,$fieldToDisplay)) : ?>
+                <tr>
+                    <th scope="row"><?= $block->getLabel($label) ?></th>
+                    <td>
+                        <?= /* @noEscape */
+                        nl2br($block->escapeHtml(implode("\n", $block->getValueAsArray($value, true)))) ?>
+                    </td>
+                </tr>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </table>
+<?php endif; ?>
+<?= $block->getChildHtml() ?>

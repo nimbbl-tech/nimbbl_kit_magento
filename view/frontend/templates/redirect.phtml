@@ -1,0 +1,38 @@
+<?php
+/** @var $block \Nimbbl\Magento\Block\Redirect */
+
+$data = $block->getOrderValues();
+$orderToken = $data['orderToken'];
+$orderId = $data['orderId'];
+$callbackUrl = $block->getCallbackURL();
+$jsUrl = $block->getJsURL();
+if ($data['success']) {
+    ?>
+    <script src="<?php echo $jsUrl;?>"></script>
+    <script>
+        const apiHost = 'https://apipp.nimbbl.tech';
+        const token = '<?php echo $orderToken;?>';
+        const orderId = '<?php echo $orderId;?>';
+        const checkoutHost = 'https://sonicpp.nimbbl.tech';
+        const checkout = new NimbblSDK.default({apiHost, token, orderId, checkoutHost});
+        console.log(checkout);
+        const handleOpen = async () => {
+            await checkout.open({
+                redirect: true,
+                callback_url: '<?php echo $callbackUrl;?>',
+                render_mobile_ui: false,
+            });
+        };
+        handleOpen();
+    </script>
+    <img src="https://api.nimbbl.tech/static/assets/img/gifs/loader_gif.gif">
+    <?php
+} else {
+    ?>
+    <img src="<?php echo $block->getErrorImgUrl()?>"/>
+    <p style="font-weight: bold;font-size: 30px"><?php echo __('OOOOPS!!!');?></p>
+    <p style="font-weight: bold;font-size: 20px"><?php echo __('an error occurred while launching nimbbl checkout.');?></p>
+    <p style="font-size: 20px"><?php echo __($data['errorMessage']);?></p>
+<?php
+}
+?>

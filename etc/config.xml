@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <payment>
+            <nimbbl>
+                <active>0</active>
+                <title>Fast payment with UPI, BNPL, NB and Cards</title>
+                <mode>0</mode>
+                <sandbox_token_url>https://apipp.nimbbl.tech/api/v3/generate-token</sandbox_token_url>
+                <live_token_url>https://apipp.nimbbl.tech/api/v3/generate-token</live_token_url>
+                <sandbox_gateway_url>https://apipp.nimbbl.tech/api/v3/create-order</sandbox_gateway_url>
+                <live_gateway_url>https://apipp.nimbbl.tech/api/v3/create-order</live_gateway_url>
+                <order_status>pending</order_status>
+                <model>Nimbbl\Magento\Model\Payment</model>
+                <show_logo>1</show_logo>
+                <allow_invoice>0</allow_invoice>
+                <debug>0</debug>
+                <instructions>After clicking “Continue to Payment”, you will be redirected to Nimbbl Checkout to complete your purchase securely.</instructions>
+            </nimbbl>
+        </payment>
+    </default>
+</config>
