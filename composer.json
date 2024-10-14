@@ -10,9 +10,10 @@
         "preferred-install": "dist",
         "sort-packages": true
     },
-    "version": "2.4.2",
+    "version": "2.4.7",
     "require": {
-        "magento/composer-root-update-plugin": "~1.1",
+        "php": "~8.3.0", 
+        "magento/composer-root-update-plugin": "~2.0",
         "magento/module-bundle-sample-data": "100.4.*",
         "magento/module-catalog-rule-sample-data": "100.4.*",
         "magento/module-catalog-sample-data": "100.4.*",
@@ -32,9 +33,10 @@
         "magento/module-theme-sample-data": "100.4.*",
         "magento/module-widget-sample-data": "100.4.*",
         "magento/module-wishlist-sample-data": "100.4.*",
-        "magento/product-community-edition": "2.4.2",
+        "magento/product-community-edition": "2.4.7",
         "magento/sample-data-media": "100.4.*",
-        "razorpay/magento": "^3.4"
+        "razorpay/magento": "^3.4",
+        "symfony/process": "^6.4"
     },
     "autoload": {
         "exclude-from-classmap": [
@@ -59,19 +61,18 @@
         }
     },
     "require-dev": {
-        "allure-framework/allure-phpunit": "~1.2.0",
-        "dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
-        "friendsofphp/php-cs-fixer": "~2.16.0",
-        "lusitanian/oauth": "~0.8.10",
+        "allure-framework/allure-phpunit": "^3.0",
+        "dealerdirect/phpcodesniffer-composer-installer": "v1.0.0",
+        "friendsofphp/php-cs-fixer": "v3.64.0",
+        "lusitanian/oauth": "v0.8.11",
         "magento/magento-coding-standard": "*",
-        "magento/magento2-functional-testing-framework": "^3.0",
-        "pdepend/pdepend": "~2.7.1",
-        "phpcompatibility/php-compatibility": "^9.3",
-        "phpmd/phpmd": "^2.8.0",
-        "phpstan/phpstan": ">=0.12.3 <=0.12.23",
-        "phpunit/phpunit": "^9",
-        "sebastian/phpcpd": "~5.0.0",
-        "squizlabs/php_codesniffer": "~3.5.4"
+        "magento/magento2-functional-testing-framework": "4.8.2",
+        "pdepend/pdepend": "2.16.2",
+        "phpcompatibility/php-compatibility": "9.3.5",
+        "phpmd/phpmd": "^2.11.0",
+        "phpstan/phpstan": "^1.9",
+        "phpunit/phpunit": "^10.5",
+        "squizlabs/php_codesniffer": "~3.6.0"
     },
     "conflict": {
         "gene/bluefoot": "*"
