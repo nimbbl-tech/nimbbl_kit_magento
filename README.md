@@ -10,11 +10,6 @@ https://devdocs.magento.com/guides/v2.3/install-gde/composer.html
 https://devdocs.magento.com/guides/v2.3/install-gde/system-requirements.html
 https://devdocs.magento.com/guides/v2.4/install-gde/prereq/nginx.html
 
-https://marketplace.magento.com/customer/accessKeys/
-
-Public Key: 38cf5dd7c286b366b144da795c35ae9f
-Private Key: ababc01c72669597892e874b4920303a
-
 After downloading latest version of composer since magento 2.3.5 does not work with composer 2 we need to run the following command. 
 
 sudo composer self-update --1

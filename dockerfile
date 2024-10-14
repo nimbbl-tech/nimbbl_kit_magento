@@ -1,8 +1,23 @@
 # Use the PHP 8.3 Apache image as the base
 FROM php:8.3-apache
 
+# Define build arguments for Magento authentication keys
+ARG MAGENTO_PUBLIC_KEY
+ARG MAGENTO_PRIVATE_KEY
+
+ENV MAGENTO_PUBLIC_KEY ${MAGENTO_PUBLIC_KEY}
+ENV MAGENTO_PRIVATE_KEY ${MAGENTO_PRIVATE_KEY}
+
 # Set environment variables for Composer
 ENV COMPOSER_VERSION=2.8.1
+
+# Copy the auth.json file
+COPY auth.json.sample /var/www/html/auth.json
+
+# Replace the <public-key> and <private-key> in auth.json with the actual values
+RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json && \
+    sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json
+
 
 # Install system dependencies and PHP extensions required for Magento
 RUN apt-get update && apt-get install -y \
