@@ -61,7 +61,7 @@ RUN chown -R www-data:www-data /var/www/html/ \
     && chmod u+x bin/magento
 
 # Copy Nginx configuration file
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose ports for Nginx and PHP-FPM
 EXPOSE 80 9000
