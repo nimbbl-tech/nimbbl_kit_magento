@@ -1,26 +1,18 @@
-# Use the PHP 8.3 Apache image as the base
-FROM php:8.3-apache
+FROM php:8.3-fpm
 
 # Define build arguments for Magento authentication keys
 ARG MAGENTO_PUBLIC_KEY
 ARG MAGENTO_PRIVATE_KEY
 
-ENV MAGENTO_PUBLIC_KEY ${MAGENTO_PUBLIC_KEY}
-ENV MAGENTO_PRIVATE_KEY ${MAGENTO_PRIVATE_KEY}
+ENV MAGENTO_PUBLIC_KEY=${MAGENTO_PUBLIC_KEY}
+ENV MAGENTO_PRIVATE_KEY=${MAGENTO_PRIVATE_KEY}
 
 # Set environment variables for Composer
 ENV COMPOSER_VERSION=2.8.1
 
-# Copy the auth.json file
-COPY auth.json.sample /var/www/html/auth.json
-
-# Replace the <public-key> and <private-key> in auth.json with the actual values
-RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json && \
-    sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json
-
-
 # Install system dependencies and PHP extensions required for Magento
 RUN apt-get update && apt-get install -y \
+    nginx \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
@@ -40,13 +32,19 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
 
+# Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- \
     --install-dir=/usr/local/bin \
     --filename=composer \
     --version=$COMPOSER_VERSION
 
-# Verify Composer version
-RUN composer --version
+# Copy the auth.json file
+COPY auth.json.sample /var/www/html/auth.json
+
+# Replace the <public-key> and <private-key> in auth.json with the actual values
+RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json && \
+    sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json
+
 # Set the document root to Magento's default directory
 WORKDIR /var/www/html
 
@@ -62,8 +60,11 @@ RUN chown -R www-data:www-data /var/www/html/ \
     && find var generated vendor pub/static pub/media app/etc -type d -exec chmod g+ws {} + \
     && chmod u+x bin/magento
 
-# Expose port 80 for the Apache server
-EXPOSE 80
+# Copy Nginx configuration file
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
-# Start Apache in the foreground
-CMD ["apache2-foreground"]
+# Expose ports for Nginx and PHP-FPM
+EXPOSE 80 9000
+
+# Run Nginx and PHP-FPM within a single CMD command
+CMD service nginx start && php-fpm --nodaemonize
