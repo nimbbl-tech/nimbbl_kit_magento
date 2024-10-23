@@ -52,7 +52,7 @@ ARG MAGENTO_PRIVATE_KEY
 
 # Replace the <public-key> and <private-key> in auth.json with the actual values
 RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json && \
-    sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json && cat /var/www/html/auth.json
+    sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json
 
 # Install PHP dependencies via Composer
 RUN composer install --no-cache --no-interaction --no-dev
@@ -93,7 +93,7 @@ RUN php bin/magento setup:install \
     --admin-password="${ADMIN_PASSWORD}" \
     --use-rewrites="1" \
     --backend-frontname="admin" \
-    --search-engine="elasticsearch7" \
+    --search-engine="elasticsearch8" \
     --elasticsearch-host="${ELASTICSEARCH_HOST}" \
     --elasticsearch-port="9200" \
     --language=en_US \
