@@ -1,31 +1,42 @@
 <?php
-
-use Dotenv\Dotenv;
-
-// Load .env file
-require_once __DIR__ . '/../../vendor/autoload.php';
-
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-$dotenv->load();
-
 return [
     'backend' => [
-        'frontName' => getenv('BACKEND_FRONT_NAME')
+        'frontName' => 'admin'
+    ],
+    'remote_storage' => [
+        'driver' => 'file'
+    ],
+    'cache' => [
+        'graphql' => [
+            'id_salt' => 'kInSeHqgjfVVcSKnktUx3o7lRGcqQ3GN'
+        ],
+        'frontend' => [
+            'default' => [
+                'id_prefix' => 'a6b_'
+            ],
+            'page_cache' => [
+                'id_prefix' => 'a6b_'
+            ]
+        ],
+        'allow_parallel_generation' => false
+    ],
+    'config' => [
+        'async' => 0
     ],
     'queue' => [
         'consumers_wait_for_messages' => 1
     ],
     'crypt' => [
-        'key' => getenv('CRYPT_KEY')
+        'key' => 'base64mN6LerENsRop93wrePHTBk66b4ywogvBeEtzLoFKJrM='
     ],
     'db' => [
-        'table_prefix' => '',
+        'table_prefix' => 'mage_',
         'connection' => [
             'default' => [
-                'host' => getenv('DB_HOST'),
-                'dbname' => getenv('DB_NAME'),
-                'username' => getenv('DB_USER'),
-                'password' => getenv('DB_PASSWORD'),
+                'host' => 'localhost',
+                'dbname' => 'magento2',
+                'username' => 'root',
+                'password' => 'mysql_password',
                 'model' => 'mysql4',
                 'engine' => 'innodb',
                 'initStatements' => 'SET NAMES utf8;',
@@ -42,25 +53,15 @@ return [
         ]
     ],
     'x-frame-options' => 'SAMEORIGIN',
-    'MAGE_MODE' => getenv('MAGE_MODE'),
+    'MAGE_MODE' => 'developer',
     'session' => [
         'save' => 'files'
     ],
-    'cache' => [
-        'frontend' => [
-            'default' => [
-                'id_prefix' => '38d_'
-            ],
-            'page_cache' => [
-                'id_prefix' => '38d_'
-            ]
-        ]
-    ],
     'lock' => [
-        'provider' => 'db',
-        'config' => [
-            'prefix' => ''
-        ]
+        'provider' => 'db'
+    ],
+    'directories' => [
+        'document_root_is_pub' => true
     ],
     'cache_types' => [
         'config' => 1,
@@ -74,14 +75,15 @@ return [
         'customer_notification' => 1,
         'config_integration' => 1,
         'config_integration_api' => 1,
-        'google_product' => 1,
-        'full_page' => 0,
+        'graphql_query_resolver_result' => 1,
+        'full_page' => 1,
         'config_webservice' => 1,
-        'translate' => 1,
-        'vertex' => 1
+        'translate' => 1
     ],
-    'downloadable_domains' => [getenv('DOWNLOADABLE_DOMAIN')],
+    'downloadable_domains' => [
+        '13.202.34.141'
+    ],
     'install' => [
-        'date' => 'Tue, 31 Aug 2021 17:41:08 +0000'
+        'date' => 'Tue, 22 Oct 2024 13:17:48 +0000'
     ]
 ];

@@ -1,0 +1,52 @@
+# Ignore the Dockerfile and other related files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ignore Magento's generated files and cache
+var/*
+!var/.htaccess
+
+# Ignore the pub/media and pub/static directories (they will be generated)
+pub/media/*
+pub/static/*
+!pub/media/.htaccess
+!pub/static/.htaccess
+
+# Ignore the vendor directory (unless you need to include it)
+vendor/*
+!.htaccess
+
+# Ignore configuration files
+app/etc/env.php
+app/etc/config.php
+
+# Ignore PHPStorm and other IDE specific files
+.idea/
+*.iml
+
+# Ignore logs
+*.log
+
+# Ignore tests and development-related files
+dev/tests/*
+build/
+phpunit.xml
+phpunit.xml.dist
+
+# Ignore local files and directories
+*.local
+.env
+*.swp
+.DS_Store
+
+# Ignore node_modules if using Node.js
+node_modules/
+
+# Ignore other unnecessary files
+*.tgz
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
