@@ -54,6 +54,7 @@ ARG MAGENTO_PRIVATE_KEY
 RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json && \
     sed -i 's/<private-key>/'"$MAGENTO_PRIVATE_KEY"'/g' /var/www/html/auth.json
 
+RUN cat /var/www/html/auth.json
 
 # Install PHP dependencies via Composer
 RUN composer install --no-cache --no-interaction --no-dev
