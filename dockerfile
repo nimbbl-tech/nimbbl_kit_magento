@@ -94,10 +94,13 @@ RUN php bin/magento setup:install \
     --admin-password="${ADMIN_PASSWORD}" \
     --use-rewrites="1" \
     --backend-frontname="admin" \
-    --db-prefix="mage_" \
     --search-engine="elasticsearch7" \
     --elasticsearch-host="${ELASTICSEARCH_HOST}" \
-    --elasticsearch-port="9200"
+    --elasticsearch-port="9200" \
+    --language=en_US \
+    --currency=USD \
+    --timezone=America/Chicago \
+    --use-rewrites=1
 
 # Change permissions (if necessary)
 RUN chown -R www-data:www-data /var/www/html
