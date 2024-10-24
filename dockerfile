@@ -97,4 +97,5 @@ RUN chown -R www-data:www-data /var/www/html
 # Start PHP-FPM and Nginx
 # CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
 
+# test
 CMD ["sh", "-c", "sleep 100000s" ]
