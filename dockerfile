@@ -83,7 +83,7 @@ ARG ADMIN_PASSWORD
 ARG ELASTICSEARCH_HOST
 
 # Run the Magento setup install command with variables
- RUN php bin/magento setup:install --base-url="${BASE_URL}" --db-host="${DB_HOST}"  --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${DB_PASSWORD}" --admin-firstname="${ADMIN_FIRSTNAME}"  --admin-lastname="${ADMIN_LASTNAME}"  --admin-email="${ADMIN_EMAIL}"  --admin-user="${ADMIN_USER}" --admin-password="${ADMIN_PASSWORD}" --use-rewrites="1" --backend-frontname="admin" --search-engine="elasticsearch7" --elasticsearch-host="${ELASTICSEARCH_HOST}" --elasticsearch-port="9200" --language=en_US --currency=USD --timezone=America/Chicago  --use-rewrites=1
+RUN php bin/magento setup:install --base-url="${BASE_URL}" --db-host="${DB_HOST}"  --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${DB_PASSWORD}" --admin-firstname="${ADMIN_FIRSTNAME}"  --admin-lastname="${ADMIN_LASTNAME}"  --admin-email="${ADMIN_EMAIL}"  --admin-user="${ADMIN_USER}" --admin-password="${ADMIN_PASSWORD}" --use-rewrites="1" --backend-frontname="admin" --search-engine="elasticsearch7" --elasticsearch-host="${ELASTICSEARCH_HOST}" --elasticsearch-port="9200" --language=en_US --currency=USD --timezone=America/Chicago  --use-rewrites=1
 
 # Change permissions (if necessary)
 RUN chown -R www-data:www-data /var/www/html
@@ -92,8 +92,8 @@ RUN chown -R www-data:www-data /var/www/html
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # Expose the ports for PHP and Nginx
- EXPOSE 80
+EXPOSE 80
 
 # Start PHP-FPM and Nginx
- CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
-
+# CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
+CMD ["sh", "-c",'sleep 1000000s']
