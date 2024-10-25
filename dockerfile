@@ -8,6 +8,7 @@ RUN echo "memory_limit = -1" > /usr/local/etc/php/conf.d/memory-limit.ini
 
 # Install dependencies and PHP extensions
 RUN apk add --no-cache freetype \
+    php8-gd \
     freetype-dev\
     autoconf \
     gcc \
