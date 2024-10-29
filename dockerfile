@@ -8,8 +8,7 @@ RUN echo "memory_limit = -1" > /usr/local/etc/php/conf.d/memory-limit.ini
 
 # Install dependencies and PHP extensions
 RUN apk add --no-cache freetype \
-    php8-gd \
-    freetype-dev\
+    freetype-dev \
     autoconf \
     gcc \
     g++ \
@@ -36,17 +35,20 @@ RUN apk add --no-cache freetype \
     zlib-dev \
     linux-headers \
     libxslt-dev
-RUN docker-php-ext-install bcmath gd intl soap sockets xsl pdo_mysql zip && rm -rf /var/cache/apk/*
 
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-xpm && \
+    docker-php-ext-install -j$(nproc) bcmath gd intl soap sockets xsl pdo_mysql zip && \
+    rm -rf /var/cache/apk/*
 
 # Install Composer
- RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.8.1
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.8.1
 
 # Set working directory
- WORKDIR /var/www/html
+WORKDIR /var/www/html
 
 # Copy local Magento code to the working directory
- COPY . /var/www/html
+COPY . /var/www/html
 
 # Copy the auth.json file
 COPY auth.json.sample /var/www/html/auth.json
@@ -62,14 +64,15 @@ RUN sed -i 's/<public-key>/'"$MAGENTO_PUBLIC_KEY"'/g' /var/www/html/auth.json &&
 # Install PHP dependencies via Composer
 RUN composer install --no-cache --no-interaction --no-dev
 
-RUN find . -type f -exec chmod 644 {} \;            
-RUN find . -type d -exec chmod 755 {} \;        
-RUN chmod -Rf 777 var
-RUN chmod -Rf 777 pub/static
-RUN chmod -Rf 777 pub/media
-RUN chmod 777 ./app/etc
-RUN chmod 644 ./app/etc/*.xml
-RUN chmod -Rf 775 bin
+# Set permissions for Magento directories and files
+RUN find . -type f -exec chmod 644 {} \; && \
+    find . -type d -exec chmod 755 {} \; && \
+    chmod -Rf 777 var && \
+    chmod -Rf 777 pub/static && \
+    chmod -Rf 777 pub/media && \
+    chmod 777 ./app/etc && \
+    chmod 644 ./app/etc/*.xml && \
+    chmod -Rf 775 bin
 
 # Define build arguments for Magento setup installation
 ARG BASE_URL
@@ -95,5 +98,6 @@ COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # Expose the ports for PHP and Nginx
 EXPOSE 80
+
 # Start PHP-FPM and Nginx
 CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
