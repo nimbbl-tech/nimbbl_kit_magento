@@ -86,9 +86,10 @@ ARG ADMIN_EMAIL
 ARG ADMIN_USER
 ARG ADMIN_PASSWORD
 ARG ELASTICSEARCH_HOST
+ARG REDIS_HOST
 
 # Run the Magento setup install command with variables
-RUN php bin/magento setup:install --disable-modules=Magento_AdminAdobeImsTwoFactorAuth,Magento_TwoFactorAuth --base-url="${BASE_URL}" --base-url-secure="${BASE_URL}" --db-host="${DB_HOST}"  --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${DB_PASSWORD}" --admin-firstname="${ADMIN_FIRSTNAME}"  --admin-lastname="${ADMIN_LASTNAME}"  --admin-email="${ADMIN_EMAIL}"  --admin-user="${ADMIN_USER}" --admin-password="${ADMIN_PASSWORD}" --use-rewrites="1" --backend-frontname="admin" --search-engine="elasticsearch7" --elasticsearch-host="${ELASTICSEARCH_HOST}" --elasticsearch-port="9200" --language=en_US --currency=USD --timezone=America/Chicago  --use-rewrites=1
+RUN php bin/magento setup:install --disable-modules=Magento_AdminAdobeImsTwoFactorAuth,Magento_TwoFactorAuth --base-url="${BASE_URL}" --base-url-secure="${BASE_URL}" --db-host="${DB_HOST}"  --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${DB_PASSWORD}" --admin-firstname="${ADMIN_FIRSTNAME}"  --admin-lastname="${ADMIN_LASTNAME}"  --admin-email="${ADMIN_EMAIL}"  --admin-user="${ADMIN_USER}" --admin-password="${ADMIN_PASSWORD}" --use-rewrites="1" --backend-frontname="admin" --search-engine="elasticsearch7" --elasticsearch-host="${ELASTICSEARCH_HOST}" --elasticsearch-port="9200" --cache-backend=redis --cache-backend-redis-server="${REDIS_HOST}" --cache-backend-redis-port=6379 --cache-backend-redis-db=1 --language=en_US --currency=USD --timezone=America/Chicago  --use-rewrites=1
 
 # Change permissions (if necessary)
 RUN chown -R www-data:www-data /var/www/html
