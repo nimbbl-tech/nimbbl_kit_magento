@@ -101,4 +101,3 @@ EXPOSE 80
 
 # Start PHP-FPM and Nginx
 CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
-
