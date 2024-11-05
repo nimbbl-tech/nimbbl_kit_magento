@@ -5433,10 +5433,10 @@
         },
         {
             "name": "magento/magento2-base",
-            "version": "2.4.6",
+            "version": "2.4.7",
             "dist": {
                 "type": "zip",
-                "url": "https://repo.magento.com/archives/magento/magento2-base/magento-magento2-base-2.4.6.0.zip",
+                "url": "https://repo.magento.com/archives/magento/magento2-base/magento-magento2-base-2.4.7.0.zip",
                 "shasum": "0b03ae2bd7a2f38c69acbd012ae3fce8588de032"
             },
             "require": {
@@ -17679,10 +17679,10 @@
         },
         {
             "name": "magento/product-community-edition",
-            "version": "2.4.6",
+            "version": "2.4.7",
             "dist": {
                 "type": "zip",
-                "url": "https://repo.magento.com/archives/magento/product-community-edition/magento-product-community-edition-2.4.6.0.zip",
+                "url": "https://repo.magento.com/archives/magento/product-community-edition/magento-product-community-edition-2.4.7.0.zip",
                 "shasum": "366521fc545daf2b89c33de4f873b81589b1d019"
             },
             "require": {
@@ -17752,7 +17752,7 @@
                 "magento/language-pt_br": "100.4.0",
                 "magento/language-zh_hans_cn": "100.4.0",
                 "magento/magento-composer-installer": ">=0.4.0",
-                "magento/magento2-base": "2.4.6",
+                "magento/magento2-base": "2.4.7",
                 "magento/module-admin-analytics": "100.4.6",
                 "magento/module-admin-notification": "100.4.6",
                 "magento/module-advanced-pricing-import-export": "100.4.7",
