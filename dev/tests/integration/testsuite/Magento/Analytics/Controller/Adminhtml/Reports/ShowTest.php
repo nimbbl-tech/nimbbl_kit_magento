@@ -14,13 +14,13 @@ use Magento\TestFramework\TestCase\AbstractBackendController;
  */
 class ShowTest extends AbstractBackendController
 {
-    private const REPORT_HOST = 'experienceleague.adobe.com';
+    private const REPORT_HOST = 'docs.magento.com';
     /**
-     * @var string
+     * @inheritDoc
      */
     protected $resource = 'Magento_Analytics::advanced_reporting';
     /**
-     * @var string
+     * @inheritDoc
      */
     protected $uri = 'backend/analytics/reports/show';
     /**

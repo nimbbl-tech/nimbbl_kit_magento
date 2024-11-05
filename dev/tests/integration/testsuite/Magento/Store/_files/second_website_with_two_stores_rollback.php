@@ -24,5 +24,6 @@ $store = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(\Ma
 if ($store->load('fixture_third_store', 'code')->getId()) {
     $store->delete();
 }
+
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', false);

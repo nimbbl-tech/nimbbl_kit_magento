@@ -466,8 +466,7 @@ MUTATION;
     public function testCreateCustomerAddressWithOptionalZipCode()
     {
         $newAddress = [
-            'country_code' => 'VA',
-            'postcode' => '00120',
+            'country_code' => 'UA',
             'street' => ['Line 1 Street', 'Line 2'],
             'company' => 'Company name',
             'telephone' => '123456789',
@@ -488,7 +487,6 @@ MUTATION;
 mutation {
   createCustomerAddress(input: {
     country_code: {$newAddress['country_code']}
-    postcode: "{$newAddress['postcode']}"
     street: ["{$newAddress['street'][0]}","{$newAddress['street'][1]}"]
     company: "{$newAddress['company']}"
     telephone: "{$newAddress['telephone']}"

@@ -59,7 +59,7 @@ class MenuTest extends \PHPUnit\Framework\TestCase
      */
     public function testRenderNavigation()
     {
-        $menuHtml = $this->blockMenu->renderNavigation($this->menuConfig->getMenu(), 0, 12);
+        $menuHtml = $this->blockMenu->renderNavigation($this->menuConfig->getMenu());
         $menu = new \SimpleXMLElement($menuHtml);
 
         $item = $menu->xpath('/ul/li/a/span')[0];
@@ -74,17 +74,12 @@ class MenuTest extends \PHPUnit\Framework\TestCase
             'Invited Customers',
         ];
         foreach ($menu->xpath('/ul//ul//ul/li/a/span') as $sortOrder => $item) {
-            if ($sortOrder>2) {
-                break;
-            }
             $this->assertEquals(
                 $liTitles[$sortOrder],
                 (string)$item,
                 '"' . $liTitles[$sortOrder] . '" item is absent or located on wrong menu level.'
             );
         }
-        // test column break if submenu contain more than 12 node
-        $this->assertStringContainsString('<li class="column">', $menuHtml);
     }
 
     /**
@@ -102,7 +97,6 @@ class MenuTest extends \PHPUnit\Framework\TestCase
         $paths->setAccessible(true);
 
         $paths->setValue(
-            null,
             [
                 ComponentRegistrar::MODULE => [],
                 ComponentRegistrar::THEME => [],
@@ -163,7 +157,7 @@ class MenuTest extends \PHPUnit\Framework\TestCase
         $reflection = new \ReflectionClass(\Magento\Framework\Component\ComponentRegistrar::class);
         $paths = $reflection->getProperty('paths');
         $paths->setAccessible(true);
-        $paths->setValue(null, $this->backupRegistrar);
+        $paths->setValue($this->backupRegistrar);
         $paths->setAccessible(false);
     }
 }

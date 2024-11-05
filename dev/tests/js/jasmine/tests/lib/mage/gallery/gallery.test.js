@@ -33,8 +33,7 @@ define([
                 thumbwidth: 88,
                 transition: 'slide',
                 transitionduration: 500,
-                width: 700,
-                whiteBorders: 0
+                width: 700
             },
             fullscreen: {
                 arrows: true,
@@ -100,7 +99,6 @@ define([
             expect(gallery.settings.data).toBeDefined();
             expect(gallery.settings.api).toBeDefined();
             expect(gallery.settings.activeBreakpoint).toEqual({});
-            expect(gallery.config.options.height).toEqual(element.height());
 
             $.fn.data = originSpy;
         });

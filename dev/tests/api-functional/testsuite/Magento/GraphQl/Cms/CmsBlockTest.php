@@ -38,7 +38,6 @@ class CmsBlockTest extends GraphQlAbstract
     /**
      * Verify the fields of CMS Block selected by identifiers
      *
-     * @magentoConfigFixture default_store web/seo/use_rewrites 1
      * @magentoApiDataFixture Magento/Cms/_files/blocks.php
      */
     public function testGetCmsBlock()
@@ -72,7 +71,6 @@ QUERY;
     /**
      * Verify the fields of CMS Block selected by block_id
      *
-     * @magentoConfigFixture default_store web/seo/use_rewrites 1
      * @magentoApiDataFixture Magento/Cms/_files/blocks.php
      */
     public function testGetCmsBlockByBlockId()

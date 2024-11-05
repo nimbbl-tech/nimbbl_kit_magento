@@ -10,7 +10,6 @@ namespace Magento\SendFriend\Block;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Model\Session;
 use Magento\Framework\ObjectManagerInterface;
-use Magento\Framework\View\Element\ButtonLockManager;
 use Magento\Framework\View\LayoutInterface;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\TestFramework\Helper\Xpath;
@@ -59,8 +58,7 @@ class SendTest extends TestCase
     {
         $this->objectManager = Bootstrap::getObjectManager();
         $this->layout = $this->objectManager->get(LayoutInterface::class);
-        $this->block = $this->layout->createBlock(Send::class)
-            ->setButtonLockManager(Bootstrap::getObjectManager()->create(ButtonLockManager::class));
+        $this->block = $this->layout->createBlock(Send::class);
         $this->session = $this->objectManager->get(Session::class);
         $this->accountManagement = $this->objectManager->get(AccountManagementInterface::class);
     }

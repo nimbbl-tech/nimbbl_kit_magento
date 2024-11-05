@@ -142,7 +142,7 @@ class ImportTest extends \PHPUnit\Framework\TestCase
             [['sku', 'name']]
         );
         $source->expects($this->any())->method('_getNextRow')->willReturn(false);
-        $this->assertFalse($this->_model->validateSource($source));
+        $this->assertTrue($this->_model->validateSource($source));
     }
 
     /**

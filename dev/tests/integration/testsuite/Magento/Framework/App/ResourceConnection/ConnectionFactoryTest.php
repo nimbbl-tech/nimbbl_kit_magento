@@ -36,8 +36,7 @@ class ConnectionFactoryTest extends \PHPUnit\Framework\TestCase
         ];
         $connection = $this->model->create($dbConfig);
         $this->assertInstanceOf(\Magento\Framework\DB\Adapter\AdapterInterface::class, $connection);
-        $this->assertIsObject($connection);
-        $this->assertTrue(property_exists($connection, 'logger'));
+        $this->assertClassHasAttribute('logger', get_class($connection));
         $object = new ReflectionClass(get_class($connection));
         $attribute = $object->getProperty('logger');
         $attribute->setAccessible(true);

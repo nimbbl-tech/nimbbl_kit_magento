@@ -230,7 +230,7 @@ QUERY;
         $this->assertEquals(
             'EUR',
             $response['products']['items'][0]['price']['minimalPrice']['amount']['currency'],
-            'Currency code EUR in fixture ' . $storeCodeFromFixture . ' is expected'
+            'Currency code EUR in fixture ' . $storeCodeFromFixture . ' is unexpected'
         );
 
         // test cached store + currency header in Euros

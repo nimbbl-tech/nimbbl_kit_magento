@@ -87,7 +87,6 @@ class Transaction
      *
      * @param \PHPUnit\Framework\TestCase $test
      * @SuppressWarnings(PHPMD.UnusedLocalVariable)
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     protected function _startTransaction(\PHPUnit\Framework\TestCase $test)
     {
@@ -111,7 +110,6 @@ class Transaction
                 $this->_eventManager->fireEvent('startTransaction', [$test]);
                 restore_error_handler();
             } catch (\Exception $e) {
-                $this->_isTransactionActive = false;
                 $test->getTestResultObject()->addFailure(
                     $test,
                     new \PHPUnit\Framework\AssertionFailedError((string)$e),
@@ -127,8 +125,8 @@ class Transaction
     protected function _rollbackTransaction()
     {
         if ($this->_isTransactionActive) {
-            $this->_isTransactionActive = false;
             $this->_getConnection()->rollbackTransparentTransaction();
+            $this->_isTransactionActive = false;
             $this->_eventManager->fireEvent('rollbackTransaction');
             $this->_getConnection()->closeConnection();
         }

@@ -101,31 +101,28 @@ class Client
     }
 
     /**
-     * Process response from GraphQL server.
+     * Process response from GraphQl server
      *
      * @param string $response
-     * @param array $responseHeaders
-     * @param array $responseCookies
      * @return mixed
      * @throws \Exception
      */
-    private function processResponse(string $response, array $responseHeaders = [], array $responseCookies = [])
+    private function processResponse(string $response)
     {
-        $responseArray = null;
-        try {
-            $responseArray = $this->json->jsonDecode($response);
-        } catch (\Exception $exception) {
-            // Note: We don't care about this exception because we have error checking bellow if it fails to decode.
-        }
+        $responseArray = $this->json->jsonDecode($response);
+
         if (!is_array($responseArray)) {
             //phpcs:ignore Magento2.Exceptions.DirectThrow
             throw new \Exception('Unknown GraphQL response body: ' . $response);
         }
-        $this->processErrors($responseArray, $responseHeaders, $responseCookies);
+
+        $this->processErrors($responseArray);
+
         if (!isset($responseArray['data'])) {
             //phpcs:ignore Magento2.Exceptions.DirectThrow
             throw new \Exception('Unknown GraphQL response body: ' . $response);
         }
+
         return $responseArray['data'];
     }
 
@@ -156,9 +153,9 @@ class Client
         array_filter($requestArray);
 
         $response = $this->curlClient->getWithFullResponse($url, $requestArray, $headers, $flushCookies);
+        $responseBody = $this->processResponse($response['body']);
         $responseHeaders = !empty($response['header']) ? $this->processResponseHeaders($response['header']) : [];
         $responseCookies = !empty($response['header']) ? $this->processResponseCookies($response['header']) : [];
-        $responseBody = $this->processResponse($response['body'], $responseHeaders, $responseCookies);
 
         return ['headers' => $responseHeaders, 'body' => $responseBody, 'cookies' => $responseCookies];
     }
@@ -191,23 +188,20 @@ class Client
         $postData = $this->json->jsonEncode($requestArray);
 
         $response = $this->curlClient->postWithFullResponse($url, $postData, $headers, $flushCookies);
+        $responseBody = $this->processResponse($response['body']);
         $responseHeaders = !empty($response['header']) ? $this->processResponseHeaders($response['header']) : [];
         $responseCookies = !empty($response['header']) ? $this->processResponseCookies($response['header']) : [];
-        $responseBody = $this->processResponse($response['body'], $responseHeaders, $responseCookies);
 
         return ['headers' => $responseHeaders, 'body' => $responseBody, 'cookies' => $responseCookies];
     }
 
     /**
-     * Process errors.
+     * Process errors
      *
      * @param array $responseBodyArray
-     * @param array $responseHeaders
-     * @param array $responseCookies
-     * @return void
-     * @throws ResponseContainsErrorsException
+     * @throws \Exception
      */
-    private function processErrors($responseBodyArray, array $responseHeaders = [], array $responseCookies = [])
+    private function processErrors($responseBodyArray)
     {
         if (isset($responseBodyArray['errors'])) {
             $errorMessage = '';
@@ -226,12 +220,8 @@ class Client
                 }
 
                 throw new ResponseContainsErrorsException(
-                    'GraphQL response contains errors: ' . $errorMessage . "\n" . var_export($responseBodyArray, true),
-                    $responseBodyArray,
-                    null,
-                    0,
-                    $responseHeaders,
-                    $responseCookies
+                    'GraphQL response contains errors: ' . $errorMessage,
+                    $responseBodyArray
                 );
             }
             //phpcs:ignore Magento2.Exceptions.DirectThrow

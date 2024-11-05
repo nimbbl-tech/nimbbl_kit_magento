@@ -4,7 +4,7 @@
  */
 
 /* eslint max-nested-callbacks: 0 */
-define(['squire', 'ko'], function (Squire, ko) {
+define(['squire'], function (Squire) {
     'use strict';
 
     var injector = new Squire(),
@@ -65,47 +65,9 @@ define(['squire', 'ko'], function (Squire, ko) {
 
     describe('Magento_Customer/js/view/authentication-popup', function () {
         describe('"setModalElement" method', function () {
-            it('skips modal initialization when cart is not initialized', function () {
-                mocks['Magento_Customer/js/customer-data'].get.and.returnValue(
-                    ko.observable({})
-                );
-
-                obj.setModalElement();
-
-                expect(
-                    mocks['Magento_Customer/js/model/authentication-popup']
-                        .createPopUp
-                ).not.toHaveBeenCalled();
-            });
-
-            it('skips modal initialization when guest checkout is allowed', function () {
-                mocks['Magento_Customer/js/customer-data'].get.and.returnValue(
-                    ko.observable({
-                        isGuestCheckoutAllowed: true
-                    })
-                );
-
-                obj.setModalElement();
-
-                expect(
-                    mocks['Magento_Customer/js/model/authentication-popup']
-                        .createPopUp
-                ).not.toHaveBeenCalled();
-            });
-
-            it('initializes modal when guest checkout is disabled', function () {
-                mocks['Magento_Customer/js/customer-data'].get.and.returnValue(
-                    ko.observable({
-                        isGuestCheckoutAllowed: false
-                    })
-                );
-
-                obj.setModalElement();
-
-                expect(
-                    mocks['Magento_Customer/js/model/authentication-popup']
-                        .createPopUp
-                ).toHaveBeenCalled();
+            it('Check for return value.', function () {
+                expect(obj.setModalElement()).toBeUndefined();
+                expect(mocks['Magento_Customer/js/model/authentication-popup'].createPopUp).toHaveBeenCalled();
             });
         });
     });

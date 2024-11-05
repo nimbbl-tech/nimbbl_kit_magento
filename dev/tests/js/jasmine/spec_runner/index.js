@@ -10,14 +10,14 @@ var tasks = [],
 
 function init(grunt, options) {
     var _                   = require('underscore'),
-        stripComments       = require('strip-comments'),
+        stripJsonComments   = require('strip-json-comments'),
         path                = require('path'),
         config,
         themes,
         file;
 
     config = grunt.file.read(__dirname + '/settings.json');
-    config = stripComments(config);
+    config = stripJsonComments(config);
     config = JSON.parse(config);
 
     themes = require(path.resolve(process.cwd(), config.themes));

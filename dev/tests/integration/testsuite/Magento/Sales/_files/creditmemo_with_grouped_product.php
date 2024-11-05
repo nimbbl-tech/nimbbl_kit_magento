@@ -5,7 +5,6 @@
  */
 declare(strict_types=1);
 
-use Magento\Sales\Model\InvoiceOrder;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Creditmemo;
 use Magento\Sales\Model\Order\Creditmemo\Item;
@@ -21,7 +20,6 @@ $creditmemoFactory = $objectManager->get(CreditmemoFactory::class);
 /** @var Order $order */
 $order = $objectManager->create(Order::class);
 $order->loadByIncrementId('100000002');
-$objectManager->get(InvoiceOrder::class)->execute($order->getId());
 $creditmemo = $creditmemoFactory->createByOrder($order, $order->getData());
 $creditmemo->setOrder($order);
 $creditmemo->setState(Creditmemo::STATE_OPEN);

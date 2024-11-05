@@ -28,9 +28,6 @@ class AttributeTest extends AbstractBackendController
 {
     /** @var PublisherConsumerController */
     private $publisherConsumerController;
-    /**
-     * @var string[]
-     */
     private $consumers = ['product_action_attribute.update'];
 
     protected function setUp(): void
@@ -129,7 +126,6 @@ class AttributeTest extends AbstractBackendController
         /** @var ListProduct $listProduct */
         $listProduct = $this->_objectManager->get(ListProduct::class);
 
-        sleep(30); // timeout to processing queue
         $this->publisherConsumerController->waitForAsynchronousResult(
             function () use ($repository) {
                 sleep(10); // Should be refactored in the scope of MC-22947

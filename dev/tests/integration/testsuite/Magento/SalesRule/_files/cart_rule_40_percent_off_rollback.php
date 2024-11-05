@@ -6,8 +6,6 @@
 
 declare(strict_types=1);
 
-use Magento\Framework\Api\Search\FilterGroup;
-use Magento\Framework\Api\SearchCriteriaInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Registry;
 use Magento\SalesRule\Api\RuleRepositoryInterface;
@@ -21,17 +19,11 @@ $registry = $bootstrap->get(Registry::class);
 /** @var RuleRepositoryInterface $ruleRepository */
 $ruleRepository = $bootstrap->get(RuleRepositoryInterface::class);
 
-$salesRuleName = '40% Off on Large Orders';
-$filterGroup = $bootstrap->get(FilterGroup::class);
-$filterGroup->setData('name', $salesRuleName);
-$searchCriteria = $bootstrap->create(SearchCriteriaInterface::class);
-$searchCriteria->setFilterGroups([$filterGroup]);
-$items = $ruleRepository->getList($searchCriteria)->getItems();
-if ($items) {
+$ruleId = $registry->registry('Magento/SalesRule/_files/cart_rule_40_percent_off');
+if ($ruleId) {
     try {
-        foreach ($items as $item) {
-            $ruleRepository->deleteById($item->getRuleId());
-        }
+        $ruleRepository->deleteById($ruleId);
+        $registry->unregister('Magento/SalesRule/_files/cart_rule_40_percent_off');
     } catch (NoSuchEntityException $e) {
     }
 }

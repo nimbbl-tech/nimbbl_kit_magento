@@ -371,11 +371,25 @@ define([
     describe('Testing validate-emailSender', function () {
         it('validate-emailSender', function () {
             expect($.validator.methods['validate-emailSender']
-                .call($.validator.prototype, 'Sender Name')).toEqual(true);
+                .call($.validator.prototype, '')).toEqual(true);
             expect($.validator.methods['validate-emailSender']
-                .call($.validator.prototype, 'Sender & Name')).toEqual(true);
+                .call($.validator.prototype, null)).toEqual(true);
             expect($.validator.methods['validate-emailSender']
-                .call($.validator.prototype, 'Sender: Name')).toEqual(false);
+                .call($.validator.prototype, undefined)).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, '   ')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, '123@123.com')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, 'abc@124.en')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, 'abc@abc.commmmm')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, 'abc.abc.abc@abc.commmmm')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, 'abc.abc-abc@abc.commmmm')).toEqual(true);
+            expect($.validator.methods['validate-emailSender']
+                .call($.validator.prototype, 'abc.abc_abc@abc.commmmm')).toEqual(true);
         });
     });
 

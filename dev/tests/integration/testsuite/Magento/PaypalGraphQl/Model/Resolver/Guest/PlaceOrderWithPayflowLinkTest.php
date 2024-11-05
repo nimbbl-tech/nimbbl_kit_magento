@@ -136,10 +136,6 @@ class PlaceOrderWithPayflowLinkTest extends TestCase
       order {
         order_number
       }
-      errors {
-        message
-        code
-      }
     }
 }
 QUERY;
@@ -242,10 +238,6 @@ QUERY;
       order {
         order_number
       }
-      errors {
-        message
-        code
-      }
     }
 }
 QUERY;
@@ -253,7 +245,8 @@ QUERY;
         $resultCode = Payflowlink::RESPONSE_CODE_DECLINED_BY_FILTER;
         $exception = new RuntimeException(__('Declined response message from PayPal gateway')->render());
         //Exception message is transformed into more controlled message
-        $expectedErrorCode = 'UNDEFINED';
+        $expectedExceptionMessage =
+            "Unable to place order: Payment Gateway is unreachable at the moment. Please use another payment option.";
 
         $this->payflowRequest->method('setData')
             ->with(
@@ -275,11 +268,12 @@ QUERY;
 
         $response = $this->graphQlRequest->send($query);
         $responseData = $this->json->unserialize($response->getContent());
-        $this->assertArrayHasKey('errors', $responseData['data']['placeOrder']);
-        $actualError = $responseData['data']['placeOrder']['errors'][0];
+        $this->assertArrayHasKey('errors', $responseData);
+        $actualError = $responseData['errors'][0];
         $this->assertEquals(
-            $expectedErrorCode,
-            $actualError['code']
+            $expectedExceptionMessage,
+            $actualError['message']
         );
+        $this->assertEquals(GraphQlInputException::EXCEPTION_CATEGORY, $actualError['extensions']['category']);
     }
 }

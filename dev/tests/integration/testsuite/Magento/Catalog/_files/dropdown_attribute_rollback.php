@@ -12,9 +12,7 @@ $attribute = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create
     'Magento\Catalog\Model\ResourceModel\Eav\Attribute'
 );
 $attribute->load('dropdown_attribute', 'attribute_code');
-if ($attribute->getAttributeId()) {
-    $attribute->delete();
-}
+$attribute->delete();
 
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', false);

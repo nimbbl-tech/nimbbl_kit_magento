@@ -31,9 +31,6 @@ class SubscribeEmailToNewsletterTest extends GraphQlAbstract
         $this->subscriberResource = $objectManager->get(SubscriberResourceModel::class);
     }
 
-    /**
-     * @magentoConfigFixture default_store newsletter/subscription/allow_guest_subscribe 1
-     */
     public function testAddEmailIntoNewsletterSubscription()
     {
         $query = $this->getQuery('guest@example.com');
@@ -44,9 +41,6 @@ class SubscribeEmailToNewsletterTest extends GraphQlAbstract
         self::assertEquals('SUBSCRIBED', $response['subscribeEmailToNewsletter']['status']);
     }
 
-    /**
-     * @magentoConfigFixture default_store newsletter/subscription/allow_guest_subscribe 1
-     */
     public function testNewsletterSubscriptionWithIncorrectEmailFormat()
     {
         $query = $this->getQuery('guest.example.com');
@@ -74,7 +68,6 @@ class SubscribeEmailToNewsletterTest extends GraphQlAbstract
 
     /**
      * @magentoApiDataFixture Magento/Newsletter/_files/guest_subscriber.php
-     * @magentoConfigFixture default_store newsletter/subscription/allow_guest_subscribe 1
      */
     public function testNewsletterSubscriptionWithAlreadySubscribedEmail()
     {

@@ -21,29 +21,17 @@ $registry->register('isSecureArea', true);
 /** @var $customer Customer */
 $customer = $objectManager->create(Customer::class);
 
-$customersToRemove = [
+$emailsToDelete = [
     'customer@example.com',
     'julie.worrell@example.com',
     'david.lamar@example.com',
 ];
-
-/**
- * @var Magento\Customer\Api\CustomerRepositoryInterface $customerRepository
- */
-$customerRepository = $objectManager->create(\Magento\Customer\Api\CustomerRepositoryInterface::class);
-
-foreach ($customersToRemove as $customerEmail) {
+foreach ($emailsToDelete as $email) {
     try {
-        $customer = $customerRepository->get($customerEmail);
-        $customerRepository->delete($customer);
-    } catch (\Magento\Framework\Exception\NoSuchEntityException $exception) {
-        /**
-         * Tests which are wrapped with MySQL transaction clear all data by transaction rollback.
-         */
-        continue;
+        $customer->loadByEmail($email)->delete();
+    } catch (\Exception $e) {
     }
 }
-
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', false);
 $registry->unregister('_fixture/Magento_ImportExport_Customer_Collection');

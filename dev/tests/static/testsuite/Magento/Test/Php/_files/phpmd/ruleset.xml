@@ -26,9 +26,7 @@
     </rule>
 
     <!-- Unused code rules -->
-    <rule ref="rulesets/unusedcode.xml">
-        <exclude name="UnusedFormalParameter"/>
-    </rule>
+    <rule ref="rulesets/unusedcode.xml" />
 
     <!-- Code design rules -->
     <rule ref="rulesets/design.xml/NumberOfChildren" />
@@ -47,6 +45,5 @@
     <!-- Magento Specific Rules -->
     <rule ref="Magento/CodeMessDetector/resources/rulesets/design.xml/AllPurposeAction" />
     <rule ref="Magento/CodeMessDetector/resources/rulesets/design.xml/CookieAndSessionMisuse" />
-    <rule ref="Magento/CodeMessDetector/resources/rulesets/unusedcode.xml/UnusedFormalParameter" />
 
 </ruleset>

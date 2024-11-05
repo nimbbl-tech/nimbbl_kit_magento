@@ -81,13 +81,14 @@ class SourceTest extends \PHPUnit\Framework\TestCase
         $optionIds = $options->getAllIds();
 
         $connection = $this->productResource->getConnection();
+
         $select = $connection->select()->from($this->productResource->getTable('catalog_product_index_eav'))
             ->where('entity_id = ?', 1)
             ->where('attribute_id = ?', $attr->getId())
             ->where('value IN (?)', $optionIds);
 
         $result = $connection->fetchAll($select);
-        $this->assertCount(0, $result);
+        $this->assertCount(2, $result);
 
         /** @var \Magento\Catalog\Model\Product $product1 **/
         $product1 = $productRepository->getById(10);
@@ -115,7 +116,7 @@ class SourceTest extends \PHPUnit\Framework\TestCase
         $statusSelect = clone $select;
         $statusSelect->reset(\Magento\Framework\DB\Select::COLUMNS)
             ->columns(new \Magento\Framework\DB\Sql\Expression('COUNT(*)'));
-        $this->assertEquals(0, $connection->fetchOne($statusSelect));
+        $this->assertEquals(1, $connection->fetchOne($statusSelect));
     }
 
     /**

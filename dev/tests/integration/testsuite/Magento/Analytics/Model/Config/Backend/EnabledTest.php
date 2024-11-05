@@ -73,6 +73,7 @@ class EnabledTest extends \PHPUnit\Framework\TestCase
         $this->checkInitialStatus();
         $this->saveConfigValue(Enabled::XML_ENABLED_CONFIG_STRUCTURE_PATH, (string)Enabledisable::DISABLE_VALUE);
         $this->reinitableConfig->reinit();
+
         $this->checkDisabledStatus();
     }
 
@@ -82,8 +83,8 @@ class EnabledTest extends \PHPUnit\Framework\TestCase
      */
     public function testReEnable()
     {
+        $this->checkDisabledStatus();
         $this->saveConfigValue(Enabled::XML_ENABLED_CONFIG_STRUCTURE_PATH, (string)Enabledisable::ENABLE_VALUE);
-        $this->reinitableConfig->reinit();
         $this->checkReEnabledStatus();
     }
 

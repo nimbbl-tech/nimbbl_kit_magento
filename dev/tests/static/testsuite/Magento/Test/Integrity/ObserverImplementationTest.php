@@ -6,7 +6,6 @@
 namespace Magento\Test\Integrity;
 
 use Magento\Framework\App\Utility\Files;
-use Magento\Tax\Observer\GetPriceConfigurationObserver;
 
 /**
  * PAY ATTENTION: Current implementation does not support of virtual types
@@ -14,9 +13,9 @@ use Magento\Tax\Observer\GetPriceConfigurationObserver;
 class ObserverImplementationTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var string
+     * Observer interface
      */
-    public const OBSERVER_INTERFACE = \Magento\Framework\Event\ObserverInterface::class;
+    const OBSERVER_INTERFACE = \Magento\Framework\Event\ObserverInterface::class;
 
     /**
      * @var array
@@ -57,16 +56,9 @@ class ObserverImplementationTest extends \PHPUnit\Framework\TestCase
         $errors = [];
         foreach (self::$observerClasses as $observerClass) {
             $reflection = (new \ReflectionClass($observerClass));
-            $publicMethodsCount = 0;
             $maxCountMethod = $reflection->getConstructor() ? 2 : 1;
-            $publicMethods = $reflection->getMethods(\ReflectionMethod::IS_PUBLIC);
-            foreach ($publicMethods as $publicMethod) {
-                if (!str_starts_with($publicMethod->getName(), '_')) {
-                    $publicMethodsCount++;
-                }
-            }
 
-            if ($publicMethodsCount > $maxCountMethod) {
+            if (count($reflection->getMethods(\ReflectionMethod::IS_PUBLIC)) > $maxCountMethod) {
                 $errors[] = $observerClass;
             }
         }
@@ -105,7 +97,6 @@ class ObserverImplementationTest extends \PHPUnit\Framework\TestCase
         $blacklistFiles = str_replace('\\', '/', realpath(__DIR__)) . '/_files/blacklist/observers*.txt';
         $blacklistExceptions = [];
         foreach (glob($blacklistFiles) as $fileName) {
-            // phpcs:ignore Magento2.Performance.ForeachArrayMerge
             $blacklistExceptions = array_merge(
                 $blacklistExceptions,
                 file($fileName, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)

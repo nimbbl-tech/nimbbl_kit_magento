@@ -206,18 +206,4 @@ abstract class GraphQlAbstract extends WebapiAbstract
             );
         }
     }
-
-    /**
-     * Tear down test and flush page cache
-     *
-     * @return void
-     */
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        $appDir = dirname(Bootstrap::getInstance()->getAppTempDir());
-        $out = '';
-        // phpcs:ignore Magento2.Security.InsecureFunction
-        exec("php -f {$appDir}/bin/magento cache:flush full_page", $out);
-    }
 }

@@ -1211,13 +1211,13 @@ mutation {
       cart_id: "$maskedQuoteId"
       billing_address: {
           address: {
-            firstname: "John"
+            firstname: "Vasyl"
             lastname: "Doe"
-            street: ["Via della Posta"]
-            city: "Vatican City"
-            region: "Vatican City"
-            postcode: "00120"
-            country_code: "VA"
+            street: ["1 Svobody"]
+            city: "Lviv"
+            region: "Lviv"
+            postcode: "00000"
+            country_code: "UA"
             telephone: "555-555-55-55"
           }
         }
@@ -1239,8 +1239,8 @@ QUERY;
         $response = $this->graphQlMutation($query, [], '', $this->getHeaderMap());
         self::assertArrayHasKey('cart', $response['setBillingAddressOnCart']);
         $cartResponse = $response['setBillingAddressOnCart']['cart'];
-        self::assertEquals('VA', $cartResponse['billing_address']['country']['code']);
-        self::assertEquals('Vatican City', $cartResponse['billing_address']['region']['label']);
+        self::assertEquals('UA', $cartResponse['billing_address']['country']['code']);
+        self::assertEquals('Lviv', $cartResponse['billing_address']['region']['label']);
     }
 
     /**

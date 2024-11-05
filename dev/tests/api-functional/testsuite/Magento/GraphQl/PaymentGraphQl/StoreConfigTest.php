@@ -12,10 +12,11 @@ use Magento\TestFramework\TestCase\GraphQlAbstract;
 /**
  * Test coverage for zero subtotal and check/money order payment methods in the store config
  *
+ * @magentoDbIsolation enabled
  */
 class StoreConfigTest extends GraphQlAbstract
 {
-    public const STORE_CONFIG_QUERY = <<<QUERY
+    const STORE_CONFIG_QUERY = <<<QUERY
 {
     storeConfig {
         zero_subtotal_enabled

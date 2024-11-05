@@ -100,6 +100,6 @@ class CopyModules
         $reflectionProperty->setAccessible(true);
         $value = $reflectionProperty->getValue();
         unset($value[ComponentRegistrar::MODULE][$moduleName]);
-        $reflectionProperty->setValue(null, $value);
+        $reflectionProperty->setValue($value);
     }
 }

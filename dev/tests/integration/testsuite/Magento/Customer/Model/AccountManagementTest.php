@@ -9,7 +9,6 @@ namespace Magento\Customer\Model;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\AddressRepositoryInterface;
 use Magento\Customer\Api\Data\AddressInterface;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Exception\State\ExpiredException;
@@ -17,7 +16,6 @@ use Magento\Framework\Reflection\DataObjectProcessor;
 use Magento\Framework\Session\SessionManagerInterface;
 use Magento\Framework\Stdlib\DateTime;
 use Magento\Framework\Url as UrlBuilder;
-use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\TestFramework\Helper\Bootstrap;
 
@@ -606,18 +604,7 @@ class AccountManagementTest extends \PHPUnit\Framework\TestCase
      */
     public function testIsEmailAvailable()
     {
-        $scopeConfig = $this->objectManager->get(ScopeConfigInterface::class);
-        $guestLoginConfig = $scopeConfig->getValue(
-            AccountManagement::GUEST_CHECKOUT_LOGIN_OPTION_SYS_CONFIG,
-            ScopeInterface::SCOPE_WEBSITE,
-            1
-        );
-
-        if (!$guestLoginConfig) {
-            $this->assertTrue($this->accountManagement->isEmailAvailable('customer@example.com', 1));
-        } else {
-            $this->assertFalse($this->accountManagement->isEmailAvailable('customer@example.com', 1));
-        }
+        $this->assertFalse($this->accountManagement->isEmailAvailable('customer@example.com', 1));
     }
 
     /**
@@ -625,18 +612,7 @@ class AccountManagementTest extends \PHPUnit\Framework\TestCase
      */
     public function testIsEmailAvailableNoWebsiteSpecified()
     {
-        $scopeConfig = $this->objectManager->get(ScopeConfigInterface::class);
-        $guestLoginConfig = $scopeConfig->getValue(
-            AccountManagement::GUEST_CHECKOUT_LOGIN_OPTION_SYS_CONFIG,
-            ScopeInterface::SCOPE_WEBSITE,
-            1
-        );
-
-        if (!$guestLoginConfig) {
-            $this->assertTrue($this->accountManagement->isEmailAvailable('customer@example.com'));
-        } else {
-            $this->assertFalse($this->accountManagement->isEmailAvailable('customer@example.com'));
-        }
+        $this->assertFalse($this->accountManagement->isEmailAvailable('customer@example.com'));
     }
 
     /**

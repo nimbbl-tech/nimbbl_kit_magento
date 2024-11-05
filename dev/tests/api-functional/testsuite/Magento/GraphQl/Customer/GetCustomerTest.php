@@ -12,13 +12,11 @@ use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Model\CustomerAuthUpdate;
 use Magento\Customer\Model\CustomerRegistry;
-use Magento\Framework\Exception\AuthenticationException;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Integration\Api\AdminTokenServiceInterface;
 use Magento\Integration\Api\CustomerTokenServiceInterface;
-use Magento\TestFramework\Bootstrap as TestBootstrap;
 use Magento\TestFramework\Helper\Bootstrap;
+use Magento\TestFramework\Bootstrap as TestBootstrap;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
 
 /**
@@ -50,6 +48,7 @@ class GetCustomerTest extends GraphQlAbstract
      * @var ObjectManagerInterface
      */
     private $objectManager;
+
     /**
      * @inheridoc
      */
@@ -206,7 +205,6 @@ QUERY;
      * @param string $email
      * @param string $password
      * @return array
-     * @throws AuthenticationException
      */
     private function getCustomerAuthHeaders(string $email, string $password): array
     {
@@ -218,7 +216,6 @@ QUERY;
     /**
      * @param int $customerId
      * @return void
-     * @throws NoSuchEntityException
      */
     private function lockCustomer(int $customerId): void
     {

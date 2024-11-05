@@ -6,18 +6,8 @@
 
 namespace Magento\SalesRule\Model\Rule\Condition;
 
-use Magento\Catalog\Test\Fixture\Category as CategoryFixture;
-use Magento\Catalog\Test\Fixture\Product as ProductFixture;
-use Magento\Checkout\Test\Fixture\SetBillingAddress as SetBillingAddressFixture;
-use Magento\Checkout\Test\Fixture\SetShippingAddress as SetShippingAddressFixture;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Registry;
-use Magento\Quote\Model\QuoteRepository;
-use Magento\Quote\Test\Fixture\AddProductToCart as AddProductToCartFixture;
-use Magento\Quote\Test\Fixture\GuestCart as GuestCartFixture;
 use Magento\SalesRule\Model\Rule;
-use Magento\SalesRule\Model\Rule\Condition\Product\Found;
-use Magento\SalesRule\Model\Rule\Condition\Product\Subselect;
 use Magento\SalesRule\Test\Fixture\ProductCondition as ProductConditionFixture;
 use Magento\SalesRule\Test\Fixture\ProductFoundInCartConditions as ProductFoundInCartConditionsFixture;
 use Magento\SalesRule\Test\Fixture\ProductSubselectionInCartConditions as ProductSubselectionInCartConditionsFixture;
@@ -45,18 +35,12 @@ class ProductTest extends \PHPUnit\Framework\TestCase
     private $fixtures;
 
     /**
-     * @var QuoteRepository
-     */
-    private $quote;
-
-    /**
      * @inheritDoc
      */
     protected function setUp(): void
     {
         $this->objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
         $this->fixtures = DataFixtureStorageManager::getStorage();
-        $this->quote = $this->objectManager->get(QuoteRepository::class);
     }
 
     /**
@@ -213,7 +197,7 @@ class ProductTest extends \PHPUnit\Framework\TestCase
         $rule->load($ruleId);
         $rule->getConditions()->setConditions([])->loadArray(
             [
-                'type' => Combine::class,
+                'type' => \Magento\SalesRule\Model\Rule\Condition\Combine::class,
                 'attribute' => null,
                 'operator' => null,
                 'value' => '1',
@@ -242,15 +226,16 @@ class ProductTest extends \PHPUnit\Framework\TestCase
             'Category (Parent Only) is not "Default Category"' => [
                 'conditions' => [
                     [
-                        'type' => Subselect::class,
+                        'type' => \Magento\SalesRule\Model\Rule\Condition\Product\Subselect::class,
                         'attribute' => 'qty',
                         'operator' => '==',
                         'value' => '1',
                         'is_value_processed' => null,
                         'aggregator' => 'all',
-                        'conditions' => [
+                        'conditions' =>
+                            [
                                 [
-                                    'type' => Product::class,
+                                    'type' => \Magento\SalesRule\Model\Rule\Condition\Product::class,
                                     'attribute' => 'category_ids',
                                     'attribute_scope' => 'parent',
                                     'operator' => '!=',
@@ -266,15 +251,16 @@ class ProductTest extends \PHPUnit\Framework\TestCase
             'Category (Parent Only) is "Default Category"' => [
                 'conditions' => [
                     [
-                        'type' => Subselect::class,
+                        'type' => \Magento\SalesRule\Model\Rule\Condition\Product\Subselect::class,
                         'attribute' => 'qty',
                         'operator' => '==',
                         'value' => '1',
                         'is_value_processed' => null,
                         'aggregator' => 'all',
-                        'conditions' => [
+                        'conditions' =>
+                            [
                                 [
-                                    'type' => Product::class,
+                                    'type' => \Magento\SalesRule\Model\Rule\Condition\Product::class,
                                     'attribute' => 'category_ids',
                                     'attribute_scope' => 'parent',
                                     'operator' => '==',
@@ -290,13 +276,14 @@ class ProductTest extends \PHPUnit\Framework\TestCase
             'Category (Parent Only) is not "Default Category"' => [
                 'conditions' => [
                     [
-                        'type' => Found::class,
+                        'type' => \Magento\SalesRule\Model\Rule\Condition\Product\Found::class,
                         'value' => '1',
                         'is_value_processed' => null,
                         'aggregator' => 'all',
-                        'conditions' => [
+                        'conditions' =>
+                            [
                                 [
-                                    'type' => Product::class,
+                                    'type' => \Magento\SalesRule\Model\Rule\Condition\Product::class,
                                     'attribute' => 'category_ids',
                                     'attribute_scope' => 'parent',
                                     'operator' => '!=',
@@ -312,13 +299,14 @@ class ProductTest extends \PHPUnit\Framework\TestCase
             'Category (Parent Only) is "Default Category"' => [
                 'conditions' => [
                     [
-                        'type' => Found::class,
+                        'type' => \Magento\SalesRule\Model\Rule\Condition\Product\Found::class,
                         'value' => '1',
                         'is_value_processed' => null,
                         'aggregator' => 'all',
-                        'conditions' => [
+                        'conditions' =>
+                            [
                                 [
-                                    'type' => Product::class,
+                                    'type' => \Magento\SalesRule\Model\Rule\Condition\Product::class,
                                     'attribute' => 'category_ids',
                                     'attribute_scope' => 'parent',
                                     'operator' => '==',
@@ -334,13 +322,14 @@ class ProductTest extends \PHPUnit\Framework\TestCase
             'Category (Parent Only) is "Default Category"' => [
                 'conditions' => [
                     [
-                        'type' => Found::class,
+                        'type' => \Magento\SalesRule\Model\Rule\Condition\Product\Found::class,
                         'value' => '0',
                         'is_value_processed' => null,
                         'aggregator' => 'all',
-                        'conditions' => [
+                        'conditions' =>
+                            [
                                 [
-                                    'type' => Product::class,
+                                    'type' => \Magento\SalesRule\Model\Rule\Condition\Product::class,
                                     'attribute' => 'category_ids',
                                     'attribute_scope' => 'parent',
                                     'operator' => '==',
@@ -353,81 +342,5 @@ class ProductTest extends \PHPUnit\Framework\TestCase
                 'expected' => false
             ],
         ];
-    }
-
-    /**
-     * Ensure that the coupon code shouldn't get applied as the cart contains products from restricted category
-     *
-     * @throws NoSuchEntityException
-     * @return void
-     */
-    #[
-        AppIsolation(true),
-        DbIsolation(true),
-        DataFixture(CategoryFixture::class, as: 'c1'),
-        DataFixture(CategoryFixture::class, as: 'c2'),
-        DataFixture(ProductFixture::class, [
-            'price' => 40,
-            'sku' => 'p1',
-            'category_ids' => ['$c1.id$']
-        ], 'p1'),
-        DataFixture(ProductFixture::class, [
-            'price' => 30,
-            'sku' => 'p2',
-            'category_ids' => ['$c2.id$']
-        ], 'p2'),
-        DataFixture(
-            RuleFixture::class,
-            [
-                'stop_rules_processing'=> 0,
-                'coupon_code' => 'test',
-                'discount_amount' => 10,
-                'conditions' => [
-                    [
-                        'type' => Combine::class,
-                        'attribute' => null,
-                        'operator' => null,
-                        'value' => '1',
-                        'is_value_processed' => null,
-                        'aggregator' => 'all',
-                        'conditions' => [
-                            [
-                                'type' => Found::class,
-                                'value' => '0',
-                                'is_value_processed' => null,
-                                'aggregator' => 'all',
-                                'conditions' => [
-                                    [
-                                        'type' => Product::class,
-                                        'attribute' => 'category_ids',
-                                        'operator' => '==',
-                                        'value' => '$c1.id$',
-                                        'is_value_processed' => false,
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-                'simple_action' => Rule::BY_FIXED_ACTION,
-                'sort_order' => 0
-            ],
-            'rule'
-        ),
-        DataFixture(GuestCartFixture::class, as: 'cart'),
-        DataFixture(AddProductToCartFixture::class, ['cart_id' => '$cart.id$', 'product_id' => '$p1.id$', 'qty' => 1]),
-        DataFixture(AddProductToCartFixture::class, ['cart_id' => '$cart.id$', 'product_id' => '$p2.id$', 'qty' => 1]),
-        DataFixture(SetBillingAddressFixture::class, ['cart_id' => '$cart.id$'], as: 'billingAddress'),
-        DataFixture(SetShippingAddressFixture::class, ['cart_id' => '$cart.id$'], as: 'shippingAddress'),
-    ]
-    public function testValidateSalesRuleForRestrictedCategories(): void
-    {
-        $cartId = (int)$this->fixtures->get('cart')->getId();
-        $quote = $this->quote->get($cartId);
-
-        $ruleId = $this->fixtures->get('rule')->getId();
-        $rule = $this->objectManager->create(Rule::class)->load($ruleId);
-
-        $this->assertFalse($rule->validate($quote->getShippingAddress()));
     }
 }

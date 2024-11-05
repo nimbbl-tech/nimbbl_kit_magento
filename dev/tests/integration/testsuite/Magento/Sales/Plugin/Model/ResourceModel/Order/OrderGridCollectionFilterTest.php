@@ -7,11 +7,12 @@ declare(strict_types=1);
 
 namespace Magento\Sales\Plugin\Model\ResourceModel\Order;
 
-use DateTimeInterface;
-use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
 use Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult;
+use Magento\Sales\Model\ResourceModel\Order\Creditmemo;
+use Magento\Sales\Model\ResourceModel\Order\Invoice;
+use Magento\Sales\Model\ResourceModel\Order\Shipment;
 use Magento\TestFramework\Helper\Bootstrap;
 use PHPUnit\Framework\TestCase;
 
@@ -63,28 +64,16 @@ class OrderGridCollectionFilterTest extends TestCase
     /**
      * Verifies that filter condition date is being converted to config timezone before select sql query
      *
-     * @dataProvider \Magento\Sales\Plugin\Model\ResourceModel\Order\DataProvider\OrdersCollectionFilters::getCollectionFiltersDataProvider
-     *
+     * @dataProvider getCollectionFiltersDataProvider
      * @param $mainTable
      * @param $resourceModel
      * @param $field
-     * @param $fieldValue
-     * @throws LocalizedException
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
-    public function testAroundAddFieldToFilter($mainTable, $resourceModel, $field, $fieldValue): void
+    public function testAroundAddFieldToFilter($mainTable, $resourceModel, $field): void
     {
-        $expectedSelect = "SELECT `main_table`.* FROM `{$mainTable}` AS `main_table` ";
-
-        $convertedDate = $fieldValue instanceof DateTimeInterface
-            ? $fieldValue->format('Y-m-d H:i:s') : $this->timeZone->convertConfigTimeToUtc($fieldValue);
-
-        if ($mainTable == 'sales_order_grid') {
-            $condition = ['from' => $fieldValue , 'locale' => "en_US", 'datetime' => true];
-            $selectCondition = "WHERE (`{$field}` >= '{$convertedDate}')";
-        } else {
-            $condition = ['qteq' => $fieldValue];
-            $selectCondition = "WHERE (((`{$field}` = '{$convertedDate}')))";
-        }
+        $filterDate = "2021-12-13 00:00:00";
+        $convertedDate = $this->timeZone->convertConfigTimeToUtc($filterDate);
 
         $this->searchResult = $this->objectManager->create(
             SearchResult::class,
@@ -97,9 +86,51 @@ class OrderGridCollectionFilterTest extends TestCase
             $this->searchResult,
             $this->proceed,
             $field,
-            $condition
+            ['qteq' => $filterDate]
         );
 
-        $this->assertEquals($expectedSelect . $selectCondition, $result->getSelectSql(true));
+        $expectedSelect = "SELECT `main_table`.* FROM `{$mainTable}` AS `main_table` " .
+            "WHERE (((`{$field}` = '{$convertedDate}')))";
+
+        $this->assertEquals($expectedSelect, $result->getSelectSql(true));
+    }
+
+    /**
+     * @return array
+     */
+    public function getCollectionFiltersDataProvider(): array
+    {
+        return [
+            'invoice_grid_collection_for_created_at' => [
+                'mainTable' => 'sales_invoice_grid',
+                'resourceModel' => Invoice::class,
+                'field' => 'created_at',
+            ],
+            'invoice_grid_collection_for_order_created_at' => [
+                'mainTable' => 'sales_invoice_grid',
+                'resourceModel' => Invoice::class,
+                'field' => 'order_created_at',
+            ],
+            'shipment_grid_collection_for_created_at' => [
+                'mainTable' => 'sales_shipment_grid',
+                'resourceModel' => Shipment::class,
+                'field' => 'created_at',
+            ],
+            'shipment_grid_collection_for_order_created_at' => [
+                'mainTable' => 'sales_shipment_grid',
+                'resourceModel' => Shipment::class,
+                'field' => 'order_created_at',
+            ],
+            'creditmemo_grid_collection_for_created_at' => [
+                'mainTable' => 'sales_creditmemo_grid',
+                'resourceModel' => Creditmemo::class,
+                'field' => 'created_at',
+            ],
+            'creditmemo_grid_collection_for_order_created_at' => [
+                'mainTable' => 'sales_creditmemo_grid',
+                'resourceModel' => Creditmemo::class,
+                'field' => 'order_created_at',
+            ]
+        ];
     }
 }

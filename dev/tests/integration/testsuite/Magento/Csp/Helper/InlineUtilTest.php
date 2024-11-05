@@ -44,8 +44,7 @@ class InlineUtilTest extends TestCase
     {
         Bootstrap::getObjectManager()->configure([
             'preferences' => [
-                DynamicCollector::class => DynamicCollectorMock::class,
-                CspNonceProvider::class => CspNonceProviderMock::class
+                DynamicCollector::class => DynamicCollectorMock::class
             ]
         ]);
         $this->util = Bootstrap::getObjectManager()->get(InlineUtil::class);
@@ -117,7 +116,7 @@ class InlineUtilTest extends TestCase
                 'script',
                 ['type' => 'text/javascript'],
                 "\n    let someVar = 25;\n    document.getElementById('test').innerText = someVar;\n",
-                "<script type=\"text&#x2F;javascript\" nonce=\"nonce-1234567890abcdef\">\n    let someVar = 25;"
+                "<script type=\"text&#x2F;javascript\">\n    let someVar = 25;"
                     ."\n    document.getElementById('test').innerText = someVar;\n</script>",
                 [
                     new FetchPolicy(
@@ -128,8 +127,8 @@ class InlineUtilTest extends TestCase
                         false,
                         false,
                         false,
-                        ['nonce-1234567890abcdef'],
-                        []
+                        [],
+                        ['U+SKpEef030N2YgyKKdIBIvPy8Fmd42N/JcTZgQV+DA=' => 'sha256']
                     )
                 ]
             ],

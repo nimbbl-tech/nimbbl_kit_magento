@@ -295,8 +295,7 @@ define([
                     result = {
                         items: items,
                         totalRecords: 2,
-                        errorMessage: '',
-                        showTotalRecords: true
+                        errorMessage: ''
                     },
                     model = new DataStorage({
                         cachedRequestDelay: 0

@@ -95,16 +95,7 @@ class DataMerger
         // check if data is not an associative array
         if (array_values($data) === $data) {
             foreach ($data as $item) {
-                if (isset($item[AttributeInterface::VALUE])) {
-                    $result[$item[AttributeInterface::ATTRIBUTE_CODE]] = $item[AttributeInterface::VALUE];
-                } elseif (isset($item['selected_options'])) {
-                    $result[$item[AttributeInterface::ATTRIBUTE_CODE]] = implode(
-                        ',',
-                        array_map(function ($option): string {
-                            return $option[AttributeInterface::VALUE] ?? '';
-                        }, $item['selected_options'])
-                    );
-                }
+                $result[$item[AttributeInterface::ATTRIBUTE_CODE]] = $item[AttributeInterface::VALUE];
             }
         } else {
             $result = $data;

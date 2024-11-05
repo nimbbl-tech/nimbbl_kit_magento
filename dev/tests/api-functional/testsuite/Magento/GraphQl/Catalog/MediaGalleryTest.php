@@ -143,9 +143,6 @@ QUERY;
 {
   products(filter: {sku: {eq: "{$productSku}"}}) {
     items {
-      small_image {
-        url
-      }
       media_gallery {
       	label
         url

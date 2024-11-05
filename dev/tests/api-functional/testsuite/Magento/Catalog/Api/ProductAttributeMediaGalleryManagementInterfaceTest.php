@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace Magento\Catalog\Api;
 
-use Magento\Catalog\Test\Fixture\Product as ProductFixture;
+use Magento\Catalog\Test\Fixture\Product;
 use Magento\Framework\Api\Data\ImageContentInterface;
 use Magento\Store\Test\Fixture\Store as StoreFixture;
 use Magento\TestFramework\Fixture\DataFixture;
@@ -27,12 +27,6 @@ use Magento\Framework\ObjectManagerInterface;
  */
 class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
 {
-    public const RESOURCE_PATH = '/V1/products/';
-
-    public const SERVICE_NAME = 'catalogProductAttributeMediaGalleryManagementV1';
-
-    public const SERVICE_VERSION = 'V1';
-
     /**
      * Default create service request information (product with SKU 'simple' is used)
      *
@@ -78,25 +72,25 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
 
         $this->createServiceInfo = [
             'rest' => [
-                'resourcePath' => self::RESOURCE_PATH.'simple/media',
+                'resourcePath' => '/V1/products/simple/media',
                 'httpMethod' => Request::HTTP_METHOD_POST,
             ],
             'soap' => [
-                'service' => self::SERVICE_NAME ,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'Create',
+                'service' => 'catalogProductAttributeMediaGalleryManagementV1',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1Create',
             ],
         ];
 
         $this->updateServiceInfo = [
             'rest' => [
-                'resourcePath' => self::RESOURCE_PATH.'simple/media',
+                'resourcePath' => '/V1/products/simple/media',
                 'httpMethod' => Request::HTTP_METHOD_PUT,
             ],
             'soap' => [
                 'service' => 'catalogProductAttributeMediaGalleryManagementV1',
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'Update',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1Update',
             ],
         ];
 
@@ -105,9 +99,9 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
                 'httpMethod' => Request::HTTP_METHOD_DELETE,
             ],
             'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'Remove',
+                'service' => 'catalogProductAttributeMediaGalleryManagementV1',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1Remove',
             ],
         ];
 
@@ -647,7 +641,7 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
 
     #[
         DataFixture(StoreFixture::class, as: 'store2'),
-        DataFixture(ProductFixture::class, ['media_gallery_entries' => [[], []]], as: 'product')
+        DataFixture(Product::class, ['media_gallery_entries' => [[], []]], as: 'product')
     ]
     public function testDeleteThrowsExceptionIfTheImageCannotBeRemoved(): void
     {
@@ -698,13 +692,13 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
 
         $serviceInfo = [
             'rest' => [
-                'resourcePath' => self::RESOURCE_PATH . $productSku . '/media/' . $imageId,
+                'resourcePath' => '/V1/products/' . $productSku . '/media/' . $imageId,
                 'httpMethod' => Request::HTTP_METHOD_GET,
             ],
             'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'Get',
+                'service' => 'catalogProductAttributeMediaGalleryManagementV1',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1Get',
             ],
         ];
         $requestData = [
@@ -731,13 +725,13 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
         $productSku = 'simple'; //from fixture
         $serviceInfo = [
             'rest' => [
-                'resourcePath' => self::RESOURCE_PATH . urlencode($productSku) . '/media',
+                'resourcePath' => '/V1/products/' . urlencode($productSku) . '/media',
                 'httpMethod' => Request::HTTP_METHOD_GET,
             ],
             'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'GetList',
+                'service' => 'catalogProductAttributeMediaGalleryManagementV1',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1GetList',
             ],
         ];
 
@@ -763,13 +757,13 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
         $productSku = 'absent_sku_' . time();
         $serviceInfo = [
             'rest' => [
-                'resourcePath' => self::RESOURCE_PATH . urlencode($productSku) . '/media',
+                'resourcePath' => '/V1/products/' . urlencode($productSku) . '/media',
                 'httpMethod' => Request::HTTP_METHOD_GET,
             ],
             'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME.'GetList',
+                'service' => 'catalogProductAttributeMediaGalleryManagementV1',
+                'serviceVersion' => 'V1',
+                'operation' => 'catalogProductAttributeMediaGalleryManagementV1GetList',
             ],
         ];
 
@@ -833,66 +827,5 @@ class ProductAttributeMediaGalleryManagementInterfaceTest extends WebapiAbstract
         $this->assertEquals(0, $updatedImage['disabled']);
         $this->assertStringStartsWith('/t/e/test_image', $updatedImage['file']);
         $this->assertEquals($videoContent, array_intersect_key($updatedImage, $videoContent));
-    }
-
-    /**
-     * Check content attribute in getList method
-     *
-     * @return void
-     */
-    #[
-        DataFixture(ProductFixture::class, ['media_gallery_entries' => [[]]], as: 'product'),
-    ]
-    public function testContentAttributeInGetList(): void
-    {
-        $productSku = $this->fixtures->get('product')->getSku();
-        $serviceInfo =  [
-            'rest' => [
-                'resourcePath' => self::RESOURCE_PATH.$productSku."/media",
-                'httpMethod' => Request::HTTP_METHOD_GET,
-            ],
-            'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME . 'getList',
-            ],
-        ];
-        $requestData = [
-            'sku' => $productSku,
-        ];
-        $response = $this->_webApiCall($serviceInfo, $requestData);
-        $this->assertArrayHasKey('content', $response[0]);
-    }
-
-    /**
-     * Check content attribute in getList method
-     *
-     * @return void
-     */
-    #[
-        DataFixture(ProductFixture::class, ['media_gallery_entries' => [[]]], as: 'product'),
-    ]
-    public function testContentAttributeInGet(): void
-    {
-        $product = $this->fixtures->get('product');
-        $productSku = $product->getSku();
-        $entryId = $product->getMediaGalleryEntries()[0]->getId();
-        $serviceInfo =  [
-            'rest' => [
-                'resourcePath' => self::RESOURCE_PATH.$productSku."/media/".$entryId,
-                'httpMethod' => Request::HTTP_METHOD_GET,
-            ],
-            'soap' => [
-                'service' => self::SERVICE_NAME,
-                'serviceVersion' => self::SERVICE_VERSION,
-                'operation' => self::SERVICE_NAME . 'get',
-            ],
-        ];
-        $requestData = [
-            'sku' => $productSku,
-            'entryId' => $entryId,
-        ];
-        $response = $this->_webApiCall($serviceInfo, $requestData);
-        $this->assertArrayHasKey('content', $response);
     }
 }

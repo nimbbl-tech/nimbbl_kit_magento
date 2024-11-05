@@ -60,12 +60,13 @@ foreach ($orderList as $order) {
     $salesOrderTaxItem = $salesOrderFactory->create();
     $salesOrderTaxItem->setTaxId($tax->getId())
         ->setTaxPercent(8.37)
-        ->setAmount($amount)
+        ->setTaxAmount($amount)
         ->setBaseAmount($amount)
         ->setRealAmount($amount)
         ->setRealBaseAmount($amount)
         ->setAppliedTaxes([$tax])
-        ->setTaxableItemType('shipping');
+        ->setTaxableItemType('shipping')
+        ->setItemId($salesOrderItem->getId());
 
     $taxItemCollection = $objectManager->create(\Magento\Sales\Model\ResourceModel\Order\Tax\Item::class);
     $taxItemCollection->save($salesOrderTaxItem);
