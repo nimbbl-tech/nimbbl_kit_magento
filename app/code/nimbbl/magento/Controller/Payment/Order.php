@@ -382,7 +382,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             ],
             "total_amount"=>$payload['amount'] / 100,
             // order_source: the integration that created the order (this plugin only creates Magento orders).
-            "order_source"=>"magento",
+            "order_source"=>PaymentMethod::ORDER_SOURCE,
             "order_source_version"=>$this->_objectManager->get('Magento\Framework\Module\ModuleList')->getOne('Nimbbl_Magento')['setup_version'] ?? "0.0.0",
             // "order_line_items"=>[
             //     [
