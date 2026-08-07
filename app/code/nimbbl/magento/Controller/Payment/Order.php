@@ -332,7 +332,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         $nimbblPayload = [
             "amount_before_tax" => $payload['amount'] / 100,
             "currency"          => "INR",
-            "invoice_id"        => $payload['receipt'],
+            "invoice_id"        => 'inv_nimbbl_magento_' . $payload['receipt'] . '_' . uniqid(),
             "tax"               => 0,
             "total_amount"      => $payload['amount'] / 100,
             "user"              => [
