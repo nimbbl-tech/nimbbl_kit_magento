@@ -35,6 +35,9 @@ abstract class BaseController extends \Magento\Framework\App\Action\Action
      * @var \Nimbbl\Magento\Model\Checkout
      */
     protected $checkout;
+    protected $config;
+    protected $key_id;
+    protected $key_secret;
 
     /**
      * @param \Magento\Framework\App\Action\Context $context

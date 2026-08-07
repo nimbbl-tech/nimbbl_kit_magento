@@ -2,8 +2,8 @@
 
 namespace Nimbbl\Magento\Controller\Payment;
 
-// use Razorpay\Api\Api;
 use Nimbbl\Magento\Model\PaymentMethod;
+use Nimbbl\Magento\Model\NimbblClientFactory;
 use Magento\Framework\Controller\ResultFactory;
 
 class Order extends \Nimbbl\Magento\Controller\BaseController
@@ -21,13 +21,21 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
     protected $logger;
 
     /**
+     * @var NimbblClientFactory
+     */
+    protected $nimbblClientFactory;
+
+    /**
      * @param \Magento\Framework\App\Action\Context $context
      * @param \Magento\Customer\Model\Session $customerSession
      * @param \Magento\Checkout\Model\Session $checkoutSession
-     * @param \Magento\Nimbbl\Model\Config\Payment $config
+     * @param \Nimbbl\Magento\Model\Config $config
+     * @param \Magento\Quote\Api\CartManagementInterface $cartManagement
+     * @param \Nimbbl\Magento\Model\CheckoutFactory $checkoutFactory
      * @param \Magento\Framework\App\CacheInterface $cache
      * @param \Magento\Sales\Api\OrderRepositoryInterface $orderRepository
      * @param \Psr\Log\LoggerInterface $logger
+     * @param NimbblClientFactory $nimbblClientFactory
      */
     public function __construct(
         \Magento\Framework\App\Action\Context $context,
@@ -38,7 +46,8 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         \Nimbbl\Magento\Model\CheckoutFactory $checkoutFactory,
         \Magento\Framework\App\CacheInterface $cache,
         \Magento\Sales\Api\OrderRepositoryInterface $orderRepository,
-        \Psr\Log\LoggerInterface $logger
+        \Psr\Log\LoggerInterface $logger,
+        NimbblClientFactory $nimbblClientFactory
     ) {
         parent::__construct(
             $context,
@@ -47,15 +56,14 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             $config
         );
 
-        $this->config          = $config;
-        $this->cartManagement  = $cartManagement;
-        $this->customerSession = $customerSession;
-        $this->checkoutFactory = $checkoutFactory;
-        $this->cache = $cache;
-        $this->orderRepository = $orderRepository;
-        $this->logger          = $logger;
-
-        $this->objectManagement   = \Magento\Framework\App\ObjectManager::getInstance();
+        $this->config                = $config;
+        $this->cartManagement        = $cartManagement;
+        $this->customerSession       = $customerSession;
+        $this->checkoutFactory       = $checkoutFactory;
+        $this->cache                 = $cache;
+        $this->orderRepository       = $orderRepository;
+        $this->logger                = $logger;
+        $this->nimbblClientFactory   = $nimbblClientFactory;
     }
 
     public function execute()
@@ -319,112 +327,44 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
 
     protected function createOrder($payload)
     {
-        $this->logger->debug("Nimbbl: Invoking Nimbbl CreateOrder API with payload: " . json_encode($payload));
-        // [2021-05-09 21:00:52] main.DEBUG: Nimbbl: Invoking Nimbbl CreateOrder API with payload: {"amount":10000,"receipt":"11","currency":"USD","payment_capture":1,"app_offer":0,"billing_details":{"countryId":"IN","regionId":"553","regionCode":"MH","region":"Maharashtra","street":["901 Yash Orion","I B Patel Road","Goregaon East"],"company":"","telephone":"9987027067","postcode":"400091","city":"Mumbai","firstname":"Harish","lastname":"Patel","saveInAddressBook":null}} [] []
-
-        // First create the token.
-        $curl = curl_init();
-
-        curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/generate-token',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_POSTFIELDS =>'{
-            "access_key": "'.$this->key_id.'",
-            "access_secret": "'.$this->key_secret.'"
-        }
-        ',
-        CURLOPT_HTTPHEADER => array(
-            'Content-Type: application/json'
-        ),
-        ));
-
-        $token_response = curl_exec($curl);
-        curl_close($curl);
-
-        $this->logger->debug("Nimbbl: token response: " . $token_response);
-
-        $token_response = json_decode($token_response, true);
-
-        // Now create the actual order.
-        $curl = curl_init();
+        $this->logger->debug("Nimbbl: Invoking Nimbbl CreateOrder API (v3) with payload: " . json_encode($payload));
 
         $nimbblPayload = [
-
-            "amount_before_tax"=>$payload['amount'] / 100,
-            "currency"=>"INR",
-            "invoice_id"=>$payload['receipt'],
-            // "device_user_agent"=>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
-            // "order_from_ip"=>"x.x.x.x",
-            "tax"=>0,
-            "user"=>[
-                "mobile_number"=>$payload['billing_details']['telephone'],
-                "email"=>$payload['email'],
-                "first_name"=>$payload['billing_details']['firstname'],
-                "last_name"=>$payload['billing_details']['lastname']
+            "amount_before_tax" => $payload['amount'] / 100,
+            "currency"          => "INR",
+            "invoice_id"        => $payload['receipt'],
+            "tax"               => 0,
+            "total_amount"      => $payload['amount'] / 100,
+            "user"              => [
+                "mobile_number" => $payload['billing_details']['telephone'],
+                "email"         => $payload['email'],
+                "first_name"    => $payload['billing_details']['firstname'],
+                "last_name"     => $payload['billing_details']['lastname']
             ],
-            "shipping_address"=>[
-
-                // "address_1"=>"Some address",
-                "street"=>implode(',', $payload['billing_details']['street']),
-                // "landmark"=>"My landmark",
-                "area"=>"",
-                "city"=>$payload['billing_details']['city'],
-                "state"=>$payload['billing_details']['region'],
-                "pincode"=>$payload['billing_details']['postcode'],
-                "address_type"=>"residential"
-            
+            "shipping_address"  => [
+                "street"       => implode(',', $payload['billing_details']['street']),
+                // Nimbbl requires a non-empty area; use street line 2 if present, else city
+                "area"         => !empty($payload['billing_details']['street'][1])
+                                    ? $payload['billing_details']['street'][1]
+                                    : $payload['billing_details']['city'],
+                "city"         => $payload['billing_details']['city'],
+                "state"        => $payload['billing_details']['region'],
+                "pincode"      => $payload['billing_details']['postcode'],
+                "address_type" => "residential"
             ],
-            "total_amount"=>$payload['amount'] / 100,
-            // "order_line_items"=>[
-            //     [
-                    
-            //         "referrer_platform_sku_id"=>"sku1",
-            //         "title"=>"Designer Triangles",
-            //         "description"=>"Wallpaper by  chenspec from Pixabay",
-            //         "quantity"=>1,
-            //         "rate"=>4,
-            //         "amount"=>4,
-            //         "total_amount"=>4,
-            //         "image_url"=>"https://cdn.pixabay.com/photo/2021/02/15/15/25/rhomboid-6018215_960_720.jpg"
-                
-            //     ]
-            // ]
         ];
-        
-        curl_setopt_array($curl, array(
-          CURLOPT_URL => 'https://uatapi.nimbbl.tech/api/v2/create-order',
-          CURLOPT_RETURNTRANSFER => true,
-          CURLOPT_ENCODING => '',
-          CURLOPT_MAXREDIRS => 10,
-          CURLOPT_TIMEOUT => 0,
-          CURLOPT_FOLLOWLOCATION => true,
-          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-          CURLOPT_CUSTOMREQUEST => 'POST',
-          CURLOPT_POSTFIELDS =>json_encode($nimbblPayload),
-          CURLOPT_HTTPHEADER => array(
-            'Authorization: Bearer ' . $token_response['token'],
-            'Content-Type: application/json'
-          ),
-        ));
-        
-        $order_response = curl_exec($curl);
-        curl_close($curl);
 
-        $this->logger->debug("Nimbbl: order response: " . $order_response);
+        // SDK auto-generates merchant token and retries on 401 — no manual token handling needed
+        $client         = $this->nimbblClientFactory->create();
+        $order_response = $client->orders()->createOrder($nimbblPayload);
 
-        $order_response = json_decode($order_response, true);
-        $order_response['id']=$order_response['order_id'];
-        $order_response['amount']=$order_response['total_amount'];
+        $this->logger->debug("Nimbbl: order response: " . json_encode($order_response));
 
+        // Normalise response keys for downstream compatibility
+        $order_response['id']     = $order_response['order_id'] ?? '';
+        $order_response['amount'] = $order_response['total_amount'] ?? ($payload['amount'] / 100);
 
         return $order_response;
-
     }
 
     // protected function getMerchantPreferences()

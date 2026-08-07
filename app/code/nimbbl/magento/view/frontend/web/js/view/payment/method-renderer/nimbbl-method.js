@@ -67,7 +67,7 @@ define(
                 // $.getScript("https://checkout.razorpay.com/v1/checkout.js", function() {
                 //     self.nimbblDataFrameLoaded = true;
                 // });
-                // $.getScript("https://uatapi.nimbbl.tech/static/assets/js/checkout.js", function() {
+                // $.getScript("https://api.nimbbl.tech/static/assets/js/checkout.js", function() {
                 //     self.nimbblDataFrameLoaded = true;
                 // });
                 // }
@@ -128,7 +128,7 @@ define(
 
                 //update shipping and billing before order into quotes
                 if (!quote.isVirtual()) {
-                    shippingSaveProcessor.saveShippingInformation().success(
+                    shippingSaveProcessor.saveShippingInformation().done(
                         function(response) {
                             self.createNimbblOrder();
                         }

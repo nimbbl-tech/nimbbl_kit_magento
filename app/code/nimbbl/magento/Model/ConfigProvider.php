@@ -33,6 +33,10 @@ class ConfigProvider implements ConfigProviderInterface
      *
      * @var \Magento\Framework\Url
      */
+    protected $method;
+    protected $assetRepo;
+    protected $request;
+    protected $logger;
     protected $urlBuilder;
 
     /**
