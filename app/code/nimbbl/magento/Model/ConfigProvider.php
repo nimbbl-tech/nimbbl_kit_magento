@@ -77,8 +77,15 @@ class ConfigProvider implements ConfigProviderInterface
         $config = [
             'payment' => [
                 'nimbbl' => [
-                    'merchant_name' => $this->config->getMerchantNameOverride(),
-                    'key_id'    => $this->config->getKeyId()
+                    'merchant_name'    => $this->config->getMerchantNameOverride(),
+                    'key_id'           => $this->config->getKeyId(),
+                    'environment'      => $this->config->getConfigData(\Nimbbl\Magento\Model\Config::KEY_ENVIRONMENT),
+                    'checkout_mode'    => $this->config->getCheckoutMode(),
+                    'express_checkout' => $this->config->isExpressCheckout(),
+                    // G4: Sonic JS checkout host — used in renderHosted() and renderIframe().
+                    'checkout_host'    => $this->config->getCheckoutHost(),
+                    // P3: API host (scheme + host of API base URL) — passed to NimbblCheckout as apiHost.
+                    'api_host'         => $this->config->getApiHost(),
                 ],
             ],
         ];

@@ -30,6 +30,10 @@ define(
                 return window.checkoutConfig.payment.nimbbl.key_id;
             },
 
+            isExpressCheckout: function() {
+                return !!(window.checkoutConfig.payment.nimbbl.express_checkout);
+            },
+
             context: function() {
                 return this;
             },
@@ -96,14 +100,22 @@ define(
                 billing_address = quote.billingAddress();
 
                 this.user = {
-                    name: billing_address.firstname + ' ' + billing_address.lastname,
-                    contact: billing_address.telephone,
+                    name:    ((billing_address.firstname || '') + ' ' + (billing_address.lastname || '')).trim(),
+                    contact: billing_address.telephone || '',
                 };
 
                 if (!customer.isLoggedIn()) {
-                    this.user.email = quote.guestEmail;
+                    this.user.email = quote.guestEmail || '';
                 } else {
-                    this.user.email = customer.customerData.email;
+                    this.user.email = customer.customerData.email || '';
+                }
+
+                // Express checkout: Nimbbl collects address inside the overlay.
+                // Require at least an email address before opening.
+                if (this.isExpressCheckout() && !this.user.email) {
+                    fullScreenLoader.stopLoader();
+                    this.isPaymentProcessing.reject('Please enter your email address before proceeding with Nimbbl Express Checkout.');
+                    return;
                 }
 
                 this.isPaymentProcessing = $.Deferred();
@@ -126,22 +138,25 @@ define(
             getNimbblOrderId: function() {
                 var self = this;
 
-                //update shipping and billing before order into quotes
-                if (!quote.isVirtual()) {
-                    shippingSaveProcessor.saveShippingInformation().done(
-                        function(response) {
-                            self.createNimbblOrder();
-                        }
-                    ).fail(
-                        function(response) {
-                            fullScreenLoader.stopLoader();
-                            self.isPaymentProcessing.reject(response.message);
-                        }
-                    );
-                } else {
+                // Express checkout: Nimbbl overlay collects the shipping address — skip
+                // Magento's address-save step so the form doesn't block the flow.
+                // Virtual products also skip shipping (no physical delivery).
+                if (quote.isVirtual() || self.isExpressCheckout()) {
                     self.createNimbblOrder();
+                    return;
                 }
 
+                // Standard checkout: persist shipping/billing to the quote first.
+                shippingSaveProcessor.saveShippingInformation().done(
+                    function(response) {
+                        self.createNimbblOrder();
+                    }
+                ).fail(
+                    function(response) {
+                        fullScreenLoader.stopLoader();
+                        self.isPaymentProcessing.reject(response.message);
+                    }
+                );
             },
             createNimbblOrder: function() {
                 var self = this;
@@ -150,8 +165,9 @@ define(
                     type: 'POST',
                     url: url.build('nimbbl/payment/order?' + Math.random().toString(36).substring(10)),
                     data: {
-                        email: this.user.email,
-                        billing_address: JSON.stringify(quote.billingAddress())
+                        email:            this.user.email,
+                        billing_address:  JSON.stringify(quote.billingAddress()),
+                        express_checkout: self.isExpressCheckout() ? 1 : 0
                     },
 
                     /**
@@ -222,43 +238,34 @@ define(
 
                 this.merchant_order_id = data.order_id;
 
-                var opts = {
-                    key: self.getKeyId(),
-                    name: self.getMerchantName(),
-                    amount: data.amount,
-                    order_id: data.rzp_order,
-                    notes: {
-                        merchant_order_id: '',
-                        merchant_quote_id: data.order_id
+                // Redirect (hosted) mode: NimbblCheckout navigates the browser to the
+                // Nimbbl-hosted checkout page. Nimbbl redirects back to callback_url
+                // after payment, POSTing nimbbl_transaction_id + nimbbl_signature.
+                var options = {
+                    "access_key":   self.getKeyId(),
+                    "order_id":     data.nimbbl_order,
+                    "redirect":     true,
+                    "callback_url": url.build('nimbbl/payment/order'),
+                    "cancel_url":   url.build('checkout/cart'),
+                    "prefill": {
+                        "name":    this.user.name,
+                        "email":   this.user.email,
+                        "contact": this.user.contact
                     },
-                    prefill: {
-                        name: this.user.name,
-                        contact: this.user.contact,
-                        email: this.user.email
-                    },
-                    callback_url: url.build('nimbbl/payment/order'),
-                    cancel_url: url.build('checkout/cart'),
-                    _: {
-                        integration: 'magento',
-                        integration_version: data.module_version,
-                        integration_parent_version: data.maze_version,
-                    }
-                }
-                const options = JSON.parse(JSON.stringify(opts));
+                    "custom": {},
+                    // G4: configurable Sonic JS host (mirrors WooCommerce checkout_host).
+                    "checkoutHost": (window.checkoutConfig.payment.nimbbl.checkout_host || 'https://sonic.nimbbl.tech'),
+                    // P3: API host for NimbblCheckout — mirrors WooCommerce api_host token.
+                    "apiHost": (window.checkoutConfig.payment.nimbbl.api_host || '')
+                };
 
-                var form = document.createElement('form'),
-                    method = 'POST',
-                    input,
-                    key;
-
-                form.method = method;
-                form.action = data.embedded_url;
-
-                self.createInputFieldsFromOptions(options, form);
-
-                document.body.appendChild(form);
-
-                form.submit();
+                // NimbblCheckout needs MicroModal present (same as popup mode) before
+                // it can redirect; require it, then open.
+                require(['MicroModal'], function(mm) {
+                    window.MicroModal = mm;
+                    window.nimbblCheckout = new NimbblCheckout(options);
+                    window.nimbblCheckout.open(data.nimbbl_order);
+                });
             },
 
             checkNimbblOrder: function(data) {
@@ -277,7 +284,11 @@ define(
                         //fullScreenLoader.stopLoader();
                         if (response.success) {
                             if (response.order_id) {
-                                $(location).attr('href', 'onepage/success?' + Math.random().toString(36).substring(10));
+                                // Use Magento's url.build() so the path resolves correctly
+                                // regardless of store base URL or sub-directory installations.
+                                // Append a random cache-buster so the browser does not serve
+                                // a stale cached copy of the success page.
+                                $(location).attr('href', url.build('checkout/onepage/success') + '?' + Math.random().toString(36).substring(10));
                             } else {
                                 setTimeout(function() { self.checkNimbblOrder(data); }, 1500);
                             }
@@ -340,19 +351,29 @@ define(
 
                 // Options for the nimbbl checkout.
                 var options = {
-                    "access_key": self.getKeyId(), // Enter the Key ID generated from the Dashboard
-                    "order_id": data.nimbbl_order,
+                    "access_key":   self.getKeyId(), // Enter the Key ID generated from the Dashboard
+                    "order_id":     data.nimbbl_order,
                     // "callback_url": url.build('nimbbl/payment/order'),
                     // "redirect": false,
+                    // G4: configurable Sonic JS host (mirrors WooCommerce checkout_host).
+                    "checkoutHost": (window.checkoutConfig.payment.nimbbl.checkout_host || 'https://sonic.nimbbl.tech'),
+                    // P3: API host for NimbblCheckout — mirrors WooCommerce api_host token.
+                    "apiHost": (window.checkoutConfig.payment.nimbbl.api_host || ''),
                     "callback_handler": function(response) {
-                        console.log('Merchant callback_handler invoked.');
-                        console.log(response);
                         if (response.status === 'failed') {
                             self.isPaymentProcessing.reject("Payment Closed: " + response.reason);
                         } else {
-
-                            data['nimbbl_transaction_id'] = response.nimbbl_transaction_id;
-                            data['nimbbl_signature'] = response.nimbbl_signature;
+                            // Capture everything needed for server-side HMAC verification.
+                            // nimbbl_payment_id is an alias for nimbbl_transaction_id (used by getData()).
+                            data['nimbbl_transaction_id']      = response.nimbbl_transaction_id;
+                            data['nimbbl_signature']           = response.nimbbl_signature;
+                            // TODO(Nimbbl): Confirm which signature version current checkout.js
+                            // emits by default. If the SDK omits the version field and signs
+                            // with v3 (invoice_id|txn_id|amount|currency|status|txn_type),
+                            // change the fallback from 'v2' to 'v3' to avoid HMAC mismatches.
+                            data['nimbbl_signature_version']   = response.nimbbl_signature_version || response.signature_version || 'v2';
+                            data['nimbbl_status']              = response.status || 'success';
+                            data['nimbbl_txn_type']            = response.transaction_type || response.txn_type || '';
 
                             self.nimbbl_response = data;
                             self.checkNimbblOrder(data);
@@ -368,11 +389,16 @@ define(
                     "custom": {},
                 };
 
-                // this.rzp = new NimbblCheckout(options);
-                // this.rzp.open();
-
-                window.checkout = new NimbblCheckout(options);
-                window.checkout.open(data.nimbbl_order);
+                // Magento's RequireJS intercepts AMD define() inside checkout.js, so
+                // MicroModal ends up as a RequireJS module rather than window.MicroModal.
+                // Require it and expose globally so NimbblCheckout constructor can find it.
+                // Also use window.nimbblCheckout (not window.checkout) to avoid collision
+                // with the Magento DOM element id="checkout".
+                require(['MicroModal'], function(mm) {
+                    window.MicroModal = mm;
+                    window.nimbblCheckout = new NimbblCheckout(options);
+                    window.nimbblCheckout.open(data.nimbbl_order);
+                });
 
             },
 
@@ -381,9 +407,13 @@ define(
                     "method": this.item.method,
                     "po_number": null,
                     "additional_data": {
-                        nimbbl_payment_id: this.nimbbl_response.nimbbl_transaction_id,
-                        order_id: this.merchant_order_id,
-                        nimbbl_signature: this.nimbbl_response.nimbbl_signature
+                        // nimbbl_payment_id is the server-side alias for nimbbl_transaction_id
+                        nimbbl_payment_id:           this.nimbbl_response.nimbbl_transaction_id,
+                        order_id:                    this.merchant_order_id,
+                        nimbbl_signature:            this.nimbbl_response.nimbbl_signature,
+                        nimbbl_signature_version:    this.nimbbl_response.nimbbl_signature_version || 'v2', // see TODO above
+                        nimbbl_status:               this.nimbbl_response.nimbbl_status || 'success',
+                        nimbbl_txn_type:             this.nimbbl_response.nimbbl_txn_type || ''
                     }
                 };
             }

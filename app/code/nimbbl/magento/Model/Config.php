@@ -16,6 +16,23 @@ class Config
     const ENABLE_WEBHOOK = 'enable_webhook';
     const WEBHOOK_SECRET = 'webhook_secret';
     const WEBHOOK_WAIT_TIME = 'webhook_wait_time';
+    const KEY_ENVIRONMENT = 'environment';
+    const KEY_CHECKOUT_MODE = 'checkout_mode';
+    const KEY_EXPRESS_CHECKOUT = 'express_checkout';
+    const KEY_DEBUG_MODE = 'debug_mode';
+    const KEY_ENCRYPT_PAYLOAD = 'encrypt_payload';
+    const KEY_CHECKOUT_HOST   = 'checkout_host';
+    const CHECKOUT_HOST_DEFAULT = 'https://sonic.nimbbl.tech';
+
+    // G3: Test / Live key pair split
+    const KEY_PAYMENT_MODE    = 'payment_mode';
+    const KEY_TEST_KEY_ID     = 'test_key_id';
+    const KEY_TEST_KEY_SECRET = 'test_key_secret';
+    const KEY_LIVE_KEY_ID     = 'live_key_id';
+    const KEY_LIVE_KEY_SECRET = 'live_key_secret';
+
+    const API_BASE_PRODUCTION = 'https://api.nimbbl.tech/api/v3';
+    const API_BASE_QA         = 'https://api-qa1.nimbbl.tech/api/v3';
 
     /**
      * @var string
@@ -49,9 +66,66 @@ class Config
         return $this->getConfigData(self::KEY_MERCHANT_NAME_OVERRIDE);
     }
 
+    /**
+     * Returns the active API access key.
+     *
+     * G3: When payment_mode is set, returns the test or live key_id based on the active mode.
+     * Falls back to the legacy key_id field for merchants that have not configured the split keys.
+     *
+     * @return string
+     */
     public function getKeyId()
     {
+        $mode = $this->getPaymentMode();
+        if ($mode === 'sandbox') {
+            $k = trim((string) $this->getConfigData(self::KEY_TEST_KEY_ID));
+            if ($k !== '') {
+                return $k;
+            }
+        } elseif ($mode === 'production') {
+            $k = trim((string) $this->getConfigData(self::KEY_LIVE_KEY_ID));
+            if ($k !== '') {
+                return $k;
+            }
+        }
+        // Fall back to legacy single key_id
         return $this->getConfigData(self::KEY_PUBLIC_KEY);
+    }
+
+    /**
+     * Returns the active API key secret.
+     *
+     * G3: When payment_mode is set, returns the test or live secret based on the active mode.
+     * Falls back to the legacy key_secret field.
+     *
+     * @return string
+     */
+    public function getKeySecret(): string
+    {
+        $mode = $this->getPaymentMode();
+        if ($mode === 'sandbox') {
+            $k = trim((string) $this->getConfigData(self::KEY_TEST_KEY_SECRET));
+            if ($k !== '') {
+                return $k;
+            }
+        } elseif ($mode === 'production') {
+            $k = trim((string) $this->getConfigData(self::KEY_LIVE_KEY_SECRET));
+            if ($k !== '') {
+                return $k;
+            }
+        }
+        // Fall back to legacy key_secret
+        return (string) $this->getConfigData(self::KEY_PRIVATE_KEY);
+    }
+
+    /**
+     * Returns the active payment mode: 'sandbox', 'production', or '' (unset / legacy).
+     *
+     * @return string
+     */
+    public function getPaymentMode(): string
+    {
+        return trim((string) $this->getConfigData(self::KEY_PAYMENT_MODE));
     }
 
     public function isWebhookEnabled()
@@ -67,6 +141,98 @@ class Config
     public function getPaymentAction()
     {
         return $this->getConfigData(self::KEY_PAYMENT_ACTION);
+    }
+
+    /**
+     * Returns the configured API base URL (free-form text field in admin).
+     *
+     * Falls back to the production URL if the value is empty.
+     *
+     * @return string  e.g. https://api.nimbbl.tech/api/v3
+     */
+    public function getApiBase(): string
+    {
+        $url = trim((string) $this->getConfigData(self::KEY_ENVIRONMENT));
+        return $url ?: self::API_BASE_PRODUCTION;
+    }
+
+    /**
+     * Returns the scheme + host portion of the configured API base URL.
+     *
+     * P3: Mirrors WooCommerce's api_host token returned to the JS checkout layer.
+     * Used to tell the Sonic JS checkout module which API endpoint to use when the
+     * store is pointed at QA or a custom host rather than the default production URL.
+     *
+     * @return string  e.g. https://api.nimbbl.tech
+     */
+    public function getApiHost(): string
+    {
+        $apiBase = $this->getApiBase();
+        $parsed  = parse_url($apiBase);
+        $scheme  = $parsed['scheme'] ?? 'https';
+        $host    = $parsed['host']   ?? 'api.nimbbl.tech';
+        return $scheme . '://' . $host;
+    }
+
+    /**
+     * Returns the configured checkout mode: 'popup' or 'redirect'.
+     *
+     * @return string
+     */
+    public function getCheckoutMode(): string
+    {
+        return (string) $this->getConfigData(self::KEY_CHECKOUT_MODE) ?: 'popup';
+    }
+
+    /**
+     * Returns whether express checkout is enabled (skip Magento address form).
+     *
+     * @return bool
+     */
+    public function isExpressCheckout(): bool
+    {
+        return (bool) (int) $this->getConfigData(self::KEY_EXPRESS_CHECKOUT);
+    }
+
+    /**
+     * Returns whether verbose debug logging is enabled.
+     *
+     * When false, $logger->debug() calls are suppressed, reducing log volume in production.
+     *
+     * @return bool
+     */
+    public function isDebugEnabled(): bool
+    {
+        return (bool) (int) $this->getConfigData(self::KEY_DEBUG_MODE);
+    }
+
+    /**
+     * Returns the Sonic JS checkout host URL.
+     *
+     * G4: Mirrors WooCommerce's checkout_host setting. Defaults to the canonical Sonic URL;
+     * should only be changed when instructed by Nimbbl support (e.g. to a staging host).
+     *
+     * @return string  e.g. https://sonic.nimbbl.tech
+     */
+    public function getCheckoutHost(): string
+    {
+        $host = trim((string) $this->getConfigData(self::KEY_CHECKOUT_HOST));
+        return $host !== '' ? rtrim($host, '/') : self::CHECKOUT_HOST_DEFAULT;
+    }
+
+    /**
+     * Returns whether AES-GCM payload encryption is enabled for outbound API calls.
+     *
+     * Must match the "Encrypt Payload" toggle in the Nimbbl dashboard.
+     * Encryption is handled by the SDK client (NimbblClient); the lightweight cURL
+     * fallback (NimbblCurlClient) accepts the flag but does not perform encryption —
+     * payloads are still protected by TLS.
+     *
+     * @return bool
+     */
+    public function isEncryptPayload(): bool
+    {
+        return (bool) (int) $this->getConfigData(self::KEY_ENCRYPT_PAYLOAD);
     }
 
     /**
