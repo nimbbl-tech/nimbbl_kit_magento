@@ -704,17 +704,22 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                     } elseif (in_array($s, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
                         $outcome = 'failed';
                     } else {
-                        // Empty or unknown status (e.g. still-processing): let
-                        // Transaction Enquiry in authorize() be the authority.
-                        $outcome = 'success';
+                        // Empty or unknown status — Transaction Enquiry (P1 block below) may
+                        // resolve it; if not, 'pending' routes the customer back to cart rather
+                        // than placing an order with an unconfirmed payment (mirrors WooCommerce
+                        // resolve_nimbbl_callback() which also defaults to 'pending').
+                        $outcome = 'pending';
                     }
 
                     // P1: Override with authoritative status from Transaction Enquiry API.
                     // Mirrors WooCommerce resolve_nimbbl_callback() → get_nimbbl_transaction_enquiry().
+                    // C1: Read payment_status first (primary field in fetch() response), then fall
+                    // through to status / transaction.status for forward-compatibility.
                     $enquiry = $this->fetchTransactionEnquiry((string) $txnId);
                     if (!empty($enquiry)) {
-                        $apiStatus = strtolower(trim((string) ($enquiry['status']
-                            ?? ($enquiry['transaction']['status'] ?? ''))));
+                        $apiStatus = strtolower(trim((string) ($enquiry['payment_status']
+                            ?? ($enquiry['status']
+                            ?? ($enquiry['transaction']['status'] ?? '')))));
                         if (in_array($apiStatus, ['succeeded', 'success'], true)) {
                             $outcome = 'success';
                         } elseif ($apiStatus === 'authorized') {
@@ -809,15 +814,21 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         } elseif (in_array($s, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
             $hmacOutcome = 'failed';
         } else {
-            // Empty / unrecognised: let Transaction Enquiry in authorize() decide.
-            $hmacOutcome = 'success';
+            // Empty or unknown status — Transaction Enquiry (P1 block below) may
+            // resolve it; if not, 'pending' routes the customer back to cart rather
+            // than placing an order with an unconfirmed payment (mirrors WooCommerce
+            // resolve_nimbbl_callback() which also defaults to 'pending').
+            $hmacOutcome = 'pending';
         }
 
         // P1: Override with authoritative status from Transaction Enquiry API (HMAC path).
+        // C1: Read payment_status first (primary field in fetch() response), then fall
+        // through to status / transaction.status for forward-compatibility.
         $enquiry = $this->fetchTransactionEnquiry((string) $txnId);
         if (!empty($enquiry)) {
-            $apiStatus = strtolower(trim((string) ($enquiry['status']
-                ?? ($enquiry['transaction']['status'] ?? ''))));
+            $apiStatus = strtolower(trim((string) ($enquiry['payment_status']
+                ?? ($enquiry['status']
+                ?? ($enquiry['transaction']['status'] ?? '')))));
             if (in_array($apiStatus, ['succeeded', 'success'], true)) {
                 $hmacOutcome = 'success';
             } elseif ($apiStatus === 'authorized') {
