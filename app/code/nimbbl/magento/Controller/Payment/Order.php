@@ -569,10 +569,22 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             $lineItems = [];
         }
 
-        // P2: Callback URL for redirect mode — mirrors WooCommerce's callback_url in order creation data.
-        $callbackUrl = (string) $this->_objectManager
-            ->get(\Magento\Framework\UrlInterface::class)
-            ->getUrl('nimbbl/payment/order');
+        // P2: Callback URL for redirect mode only.
+        // callback_url is a server-to-server redirect target: Nimbbl's production API rejects
+        // non-routable URLs (localhost, 127.0.0.1) with PAYMENT_INFORMATION_MISSING.
+        // In popup mode the response is delivered via callback_handler in JS, so the field
+        // is unnecessary and must be omitted to avoid breaking local / staged environments.
+        $callbackUrl = null;
+        if ($this->config->getCheckoutMode() === 'redirect') {
+            $rawCallbackUrl = (string) $this->_objectManager
+                ->get(\Magento\Framework\UrlInterface::class)
+                ->getUrl('nimbbl/payment/order');
+            // Only include if it is a routable (non-localhost) URL.
+            $parsedHost = parse_url($rawCallbackUrl, PHP_URL_HOST) ?? '';
+            if ($parsedHost !== '' && $parsedHost !== 'localhost' && $parsedHost !== '127.0.0.1') {
+                $callbackUrl = $rawCallbackUrl;
+            }
+        }
 
         $nimbblPayload = [
             "amount_before_tax" => $payload['amount'] / 100,
@@ -595,10 +607,14 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                 "pincode"      => $b['postcode'] ?? '',
                 "address_type" => "residential"
             ],
-            // P2: Line items and callback URL — mirrors WooCommerce create_nimbbl_payment_order_data().
+            // P2: Line items — mirrors WooCommerce create_nimbbl_payment_order_data().
             "order_line_items" => $lineItems,
-            "callback_url"     => $callbackUrl,
         ];
+
+        // Only attach callback_url if it was resolved above (redirect mode + routable host).
+        if ($callbackUrl !== null) {
+            $nimbblPayload['callback_url'] = $callbackUrl;
+        }
 
         // SDK auto-generates merchant token and retries on 401 — no manual token handling needed
         $client         = $this->nimbblClientFactory->create();
