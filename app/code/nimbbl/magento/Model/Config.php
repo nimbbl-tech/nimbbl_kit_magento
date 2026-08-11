@@ -22,8 +22,8 @@ class Config
     const KEY_CHECKOUT_HOST   = 'checkout_host';
     const CHECKOUT_HOST_DEFAULT = 'https://sonic.nimbbl.tech';
 
-    const API_BASE_PRODUCTION = 'https://api.nimbbl.tech/api/v3';
-    const API_BASE_QA         = 'https://api-qa1.nimbbl.tech/api/v3';
+    const API_BASE_PRODUCTION = 'https://api.nimbbl.tech';
+    const API_BASE_QA         = 'https://api-qa1.nimbbl.tech';
 
     /**
      * @var string
@@ -88,16 +88,22 @@ class Config
     }
 
     /**
-     * Returns the configured API base URL (free-form text field in admin).
+     * Returns the full API base URL including the /api/v3 path.
      *
-     * Falls back to the production URL if the value is empty.
+     * The admin field stores only the scheme+host (e.g. https://api.nimbbl.tech),
+     * and /api/v3 is appended here — matching WooCommerce's get_nimbbl_api_url().
+     * Falls back to the production host if the value is empty.
      *
      * @return string  e.g. https://api.nimbbl.tech/api/v3
      */
     public function getApiBase(): string
     {
-        $url = trim((string) $this->getConfigData(self::KEY_ENVIRONMENT));
-        return $url ?: self::API_BASE_PRODUCTION;
+        $host = trim((string) $this->getConfigData(self::KEY_ENVIRONMENT));
+        $host = $host ?: self::API_BASE_PRODUCTION;
+        // Strip any trailing /api/v3 a merchant may have saved from the old full-URL format,
+        // then re-append it — mirrors WooCommerce's get_nimbbl_api_url() pattern.
+        $host = preg_replace('#/api/v3/?$#', '', rtrim($host, '/'));
+        return $host . '/api/v3';
     }
 
     /**
@@ -151,17 +157,20 @@ class Config
     }
 
     /**
-     * Returns the Sonic JS checkout host URL.
+     * Returns the Sonic JS checkout host URL with a trailing slash.
      *
-     * G4: Mirrors WooCommerce's checkout_host setting. Defaults to the canonical Sonic URL;
-     * should only be changed when instructed by Nimbbl support (e.g. to a staging host).
+     * G4: Mirrors WooCommerce's checkout_host setting, which applies trailingslashit()
+     * before passing the value to the token endpoint and to the JS checkout layer.
+     * Defaults to the canonical Sonic URL; should only be changed when instructed by
+     * Nimbbl support (e.g. to a staging host).
      *
-     * @return string  e.g. https://sonic.nimbbl.tech
+     * @return string  e.g. https://sonic.nimbbl.tech/
      */
     public function getCheckoutHost(): string
     {
         $host = trim((string) $this->getConfigData(self::KEY_CHECKOUT_HOST));
-        return $host !== '' ? rtrim($host, '/') : self::CHECKOUT_HOST_DEFAULT;
+        $host = $host !== '' ? rtrim($host, '/') : rtrim(self::CHECKOUT_HOST_DEFAULT, '/');
+        return $host . '/';
     }
 
     /**

@@ -7,8 +7,8 @@ use Magento\Framework\Data\OptionSourceInterface;
 /**
  * Source model for Nimbbl API environment selector.
  *
- * Production  → https://api.nimbbl.tech/api/v3
- * QA          → https://api-qa1.nimbbl.tech/api/v3
+ * Production  → https://api.nimbbl.tech   (/api/v3 appended by Config::getApiBase())
+ * QA          → https://api-qa1.nimbbl.tech
  */
 class Environment implements OptionSourceInterface
 {

@@ -37,7 +37,7 @@
                 </field>
                 <field id="environment" translate="label" type="text" sortOrder="7" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>API Base URL</label>
-                    <comment>Nimbbl v3 API base URL. Default: https://api.nimbbl.tech/api/v3  |  QA: https://api-qa1.nimbbl.tech/api/v3</comment>
+                    <comment>Nimbbl API host. Default: https://api.nimbbl.tech  |  QA: https://api-qa1.nimbbl.tech — the /api/v3 path is appended automatically. Leave blank to use the default.</comment>
                     <config_path>payment/nimbbl/environment</config_path>
                 </field>
                 <field id="enable_webhook" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" showInStore="1">
