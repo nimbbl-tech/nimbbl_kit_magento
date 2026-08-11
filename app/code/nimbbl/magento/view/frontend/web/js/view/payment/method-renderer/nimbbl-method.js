@@ -390,13 +390,23 @@ define(
                             // nimbbl_payment_id is an alias for nimbbl_transaction_id (used by getData()).
                             data['nimbbl_transaction_id']      = response.nimbbl_transaction_id;
                             data['nimbbl_signature']           = response.nimbbl_signature;
-                            // TODO(Nimbbl): Confirm which signature version current checkout.js
-                            // emits by default. If the SDK omits the version field and signs
-                            // with v3 (invoice_id|txn_id|amount|currency|status|txn_type),
-                            // change the fallback from 'v2' to 'v3' to avoid HMAC mismatches.
-                            data['nimbbl_signature_version']   = response.nimbbl_signature_version || response.signature_version || 'v2';
+                            // Signature version lives at response.version (top-level string set
+                            // by the backend: 'v1'/'v2'/'v3'/'v4').  Nested fallback covers any
+                            // SDK variant that surfaces it as transaction.signature_version.
+                            // Neither response.nimbbl_signature_version nor response.signature_version
+                            // are real fields — using them caused v3 merchants to always HMAC-verify
+                            // as v2, which always failed (different string formula).
+                            data['nimbbl_signature_version']   = response.version
+                                || (response.transaction && response.transaction.signature_version)
+                                || 'v2';
                             data['nimbbl_status']              = response.status || 'success';
-                            data['nimbbl_txn_type']            = response.transaction_type || response.txn_type || '';
+                            // transaction_type lives at response.transaction.transaction_type (nested).
+                            // response.transaction_type is not a top-level field; reading it directly
+                            // returned undefined → empty string → v3 HMAC always failed because
+                            // the PHP built "…|status|" while the backend signed "…|status|payment".
+                            data['nimbbl_txn_type']            = (response.transaction && response.transaction.transaction_type)
+                                || response.transaction_type
+                                || '';
 
                             self.nimbbl_response = data;
                             // FIX-4: Re-enable loader while checkNimbblOrder polls / places the order.
@@ -447,7 +457,7 @@ define(
                         nimbbl_payment_id:           this.nimbbl_response.nimbbl_transaction_id,
                         order_id:                    this.merchant_order_id,
                         nimbbl_signature:            this.nimbbl_response.nimbbl_signature,
-                        nimbbl_signature_version:    this.nimbbl_response.nimbbl_signature_version || 'v2', // see TODO above
+                        nimbbl_signature_version:    this.nimbbl_response.nimbbl_signature_version || 'v2',
                         nimbbl_status:               this.nimbbl_response.nimbbl_status || 'success',
                         nimbbl_txn_type:             this.nimbbl_response.nimbbl_txn_type || ''
                     }
