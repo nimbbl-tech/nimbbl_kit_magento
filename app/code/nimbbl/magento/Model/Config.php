@@ -14,8 +14,6 @@ class Config
     const KEY_MERCHANT_NAME_OVERRIDE = 'merchant_name_override';
     const KEY_PAYMENT_ACTION = 'payment_action';
     const ENABLE_WEBHOOK = 'enable_webhook';
-    const WEBHOOK_SECRET = 'webhook_secret';
-    const WEBHOOK_WAIT_TIME = 'webhook_wait_time';
     const KEY_ENVIRONMENT = 'environment';
     const KEY_CHECKOUT_MODE = 'checkout_mode';
     const KEY_EXPRESS_CHECKOUT = 'express_checkout';
@@ -84,11 +82,6 @@ class Config
         return (bool) (int) $this->getConfigData(self::ENABLE_WEBHOOK, $this->storeId);
     }
 
-    public function getWebhookSecret()
-    {
-        return $this->getConfigData(self::WEBHOOK_SECRET);
-    }
-    
     public function getPaymentAction()
     {
         return $this->getConfigData(self::KEY_PAYMENT_ACTION);

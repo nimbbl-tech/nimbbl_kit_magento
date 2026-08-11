@@ -100,19 +100,14 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
         $webhookData = null;
         $verified    = false;
 
-        // Webhook verification uses the dedicated webhook_secret, not the API key_secret.
-        // Using the API key here is wrong: Nimbbl signs webhook payloads with a separate
-        // secret configured in the Nimbbl dashboard. $this->key_secret (API private key)
-        // is only for on-demand API requests, not for webhook envelope verification.
-        $webhookSecret = (string) $this->config->getWebhookSecret();
+        // Webhook verification uses the API Key Secret — same as WooCommerce.
+        // Nimbbl signs webhook payloads with the same key_secret used for API requests.
+        $webhookSecret = (string) $this->config->getKeySecret();
 
         if ($webhookSecret === '') {
-            // An empty secret produces a deterministic HMAC that any attacker can
-            // pre-compute. Reject all incoming webhooks until the secret is configured
-            // rather than allowing forged payloads through.
             $this->logger->critical(
-                'Nimbbl Webhook: webhook_secret is not configured — all incoming webhooks ' .
-                'are rejected. Set the Webhook Secret in Stores → Config → Payment → Nimbbl.'
+                'Nimbbl Webhook: API Key Secret is not configured — all incoming webhooks ' .
+                'are rejected. Set the API Key Secret in Stores → Config → Payment → Nimbbl.'
             );
             return $this->sendResponse(200);
         }
@@ -564,7 +559,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
      * Supports signature_version v3 and legacy v2 formats.
      *
      * @param array  $data          Decoded webhook payload
-     * @param string $webhookSecret The webhook_secret from admin config (NOT the API key_secret)
+     * @param string $webhookSecret The API Key Secret from admin config (same key used for API requests)
      */
     protected function verifyNimbblPaymentSignature(array $data, string $webhookSecret): bool
     {

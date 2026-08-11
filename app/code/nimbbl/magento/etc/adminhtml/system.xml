@@ -47,12 +47,6 @@
                     <frontend_model>Nimbbl\Magento\Model\WebhookUrl</frontend_model>
                     <config_path>payment/nimbbl/enable_webhook</config_path>
                 </field>
-                <field id="webhook_secret" translate="label" type="obscure" sortOrder="9" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Webhook Secret</label>
-                    <comment>Must match the Webhook Secret configured in dashboard.nimbbl.com/webhooks. Used to verify incoming webhook payloads — do NOT use the API Key Secret here.</comment>
-                    <config_path>payment/nimbbl/webhook_secret</config_path>
-                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                </field>
                 <field id="checkout_mode" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Checkout Mode</label>
                     <comment>Popup opens the Nimbbl overlay inline; Redirect sends the customer to the Nimbbl hosted page.</comment>
