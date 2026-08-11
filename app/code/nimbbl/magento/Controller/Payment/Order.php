@@ -819,7 +819,7 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         }
         try {
             $client = $this->nimbblClientFactory->create();
-            $result = $client->transactions()->fetch($txnId);
+            $result = $client->transactions()->transactionEnquiry(['nimbbl_transaction_id' => $txnId]);
             return is_array($result) ? $result : [];
         } catch (\Exception $e) {
             $this->logger->warning(

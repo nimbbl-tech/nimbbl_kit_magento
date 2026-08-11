@@ -30,7 +30,10 @@ class NimbblClientFactory
     }
 
     /**
-     * Returns an object with an orders() method that exposes createOrder().
+     * Returns an object exposing the three Nimbbl service accessors:
+     *   orders()->createOrder($payload)
+     *   transactions()->transactionEnquiry(['nimbbl_transaction_id' => $id])
+     *   refunds()->initiateRefund(['transaction_id' => $id, 'refund_amount' => $amount, ...])
      *
      * The API base URL is resolved from the admin "API Environment" setting:
      *   Production → https://api.nimbbl.tech/api/v3
