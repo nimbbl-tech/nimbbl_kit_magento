@@ -369,14 +369,75 @@ define(
                         // not to reject the deferred a second time.
                         _callbackFired = true;
 
+                        // ── v4 ──────────────────────────────────────────────────────────────
+                        // Payload envelope: { payload: base64(innerJson), nimbbl_signature, version: 'v4' }
+                        // Inner JSON (decoded): { checkout_status, reason, nimbbl_transaction_id,
+                        //                        invoice_id, retry, message, nimbbl_order_id }
+                        // HMAC is computed server-side over the raw inner JSON string.
+                        // PHP verifies: HMAC-SHA256(keySecret, base64_decode(payload))
+                        if (response.version === 'v4') {
+                            var v4Inner = null;
+                            try {
+                                v4Inner = JSON.parse(atob(response.payload || ''));
+                            } catch (e) {
+                                fullScreenLoader.stopLoader();
+                                self.isPaymentProcessing.reject(
+                                    $.mage.__('Payment response could not be read. Please contact support.')
+                                );
+                                return;
+                            }
+
+                            var v4Status = (typeof v4Inner.checkout_status === 'string') ? v4Inner.checkout_status : '';
+
+                            if (v4Status !== 'success') {
+                                // Map v4 reason codes to human-readable messages.
+                                var _v4ReasonMap = {
+                                    'user_cancelled':                $.mage.__('Payment was cancelled. Please try again.'),
+                                    'user_cancel':                   $.mage.__('Payment was cancelled. Please try again.'),
+                                    'payment_failed':                $.mage.__('Payment could not be processed. Please try again.'),
+                                    'max_retries_exhausted':         $.mage.__('Maximum payment attempts reached. Please contact support.'),
+                                    'timed_out':                     $.mage.__('The payment session timed out. Please try again.'),
+                                    'timeout':                       $.mage.__('The payment session timed out. Please try again.'),
+                                    'bank_declined':                 $.mage.__('Your payment was declined by the bank. Please try a different method.'),
+                                    'insufficient_funds':            $.mage.__('Insufficient funds. Please try a different payment method.'),
+                                    'order_lapsed':                  $.mage.__('The order has expired. Please start a new checkout.'),
+                                    'no_payment_methods_configured': $.mage.__('No payment methods are available. Please contact support.'),
+                                    'invalid_order':                 $.mage.__('The order is invalid. Please start a new checkout.')
+                                };
+                                var _v4Reason  = (typeof v4Inner.reason === 'string') ? v4Inner.reason : '';
+                                var _v4FailMsg = _v4ReasonMap[_v4Reason]
+                                    || (typeof v4Inner.message === 'string' && v4Inner.message ? v4Inner.message : null)
+                                    || $.mage.__('Payment could not be completed. Please try again.');
+                                fullScreenLoader.stopLoader();
+                                self.isPaymentProcessing.reject(_v4FailMsg);
+                                return;
+                            }
+
+                            // v4 success: pass the raw base64 payload to PHP for HMAC verification.
+                            // nimbbl_transaction_id is extracted from the inner payload — it is always
+                            // populated when checkout_status is 'success' (a transaction exists).
+                            data['nimbbl_transaction_id']    = v4Inner.nimbbl_transaction_id || '';
+                            data['nimbbl_signature']         = response.nimbbl_signature;
+                            data['nimbbl_signature_version'] = 'v4';
+                            data['nimbbl_payload']           = response.payload; // base64 string; PHP decodes to verify HMAC
+                            data['nimbbl_status']            = v4Status;
+                            data['nimbbl_txn_type']          = '';
+
+                            self.nimbbl_response = data;
+                            fullScreenLoader.startLoader();
+                            self.checkNimbblOrder(data);
+                            return;
+                        }
+
+                        // ── v1 / v2 / v3 ────────────────────────────────────────────────────
                         if (response.status === 'failed') {
                             // FIX-2: Map Nimbbl reason codes to human-readable messages instead
                             // of showing raw "Payment Closed: undefined" / "Payment Closed: user_cancel".
                             var _reasonMap = {
-                                'user_cancel':   $.mage.__('Payment was cancelled. Please try again.'),
-                                'user_cancelled': $.mage.__('Payment was cancelled. Please try again.'),
-                                'timeout':        $.mage.__('The payment session timed out. Please try again.'),
-                                'bank_declined':  $.mage.__('Your payment was declined by the bank. Please try a different method.'),
+                                'user_cancel':        $.mage.__('Payment was cancelled. Please try again.'),
+                                'user_cancelled':     $.mage.__('Payment was cancelled. Please try again.'),
+                                'timeout':            $.mage.__('The payment session timed out. Please try again.'),
+                                'bank_declined':      $.mage.__('Your payment was declined by the bank. Please try a different method.'),
                                 'insufficient_funds': $.mage.__('Insufficient funds. Please try a different payment method.')
                             };
                             var _rawReason = (typeof response.reason === 'string') ? response.reason : '';
@@ -459,7 +520,9 @@ define(
                         nimbbl_signature:            this.nimbbl_response.nimbbl_signature,
                         nimbbl_signature_version:    this.nimbbl_response.nimbbl_signature_version || 'v2',
                         nimbbl_status:               this.nimbbl_response.nimbbl_status || 'success',
-                        nimbbl_txn_type:             this.nimbbl_response.nimbbl_txn_type || ''
+                        nimbbl_txn_type:             this.nimbbl_response.nimbbl_txn_type || '',
+                        // v4 only: raw base64 inner payload; empty string for v1/v2/v3.
+                        nimbbl_payload:              this.nimbbl_response.nimbbl_payload || ''
                     }
                 };
             }

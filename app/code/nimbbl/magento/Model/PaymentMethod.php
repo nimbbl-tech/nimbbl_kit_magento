@@ -430,10 +430,18 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
      * Verify the HMAC signature returned by the Nimbbl checkout SDK callback handler.
      *
      * Mirrors the WooCommerce plugin's verify_nimbbl_payment_signature() logic.
-     * Supports v3 and v2 signature formats.
+     * Supports v2, v3, and v4 signature formats.
+     *
+     * v4 format: the entire inner payload JSON is base64-encoded and sent as nimbbl_payload.
+     *   HMAC = SHA256(keySecret, base64_decode(nimbbl_payload))
+     *   No pipe-joined string; the raw JSON string is the HMAC input.
+     *   invoice_id is embedded in the inner payload and not needed for the HMAC itself.
+     *
+     * v3 format: invoice_id|txn_id|amount|currency|status|txn_type
+     * v2 format: invoice_id|txn_id|amount|currency
      *
      * @param array  $additionalData  Payment additional_data from JS getData()
-     * @param string $invoiceId       Our invoice_id sent to Nimbbl (from session)
+     * @param string $invoiceId       Our invoice_id sent to Nimbbl (from session) — not used for v4
      * @param float  $grandTotal      Order grand total (Magento value — cannot be spoofed by client)
      * @param string $currency        Order currency code (e.g. INR)
      * @throws LocalizedException    If signature does not match
@@ -448,6 +456,41 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             throw new LocalizedException(__('Nimbbl: Payment signature is missing. Cannot verify payment.'));
         }
 
+        // ── v4: HMAC over the raw inner payload JSON ──────────────────────────
+        // The JS sends nimbbl_payload = base64(innerJson) directly from the callback.
+        // We decode it and compute HMAC-SHA256 over the raw JSON string, mirroring
+        // _sign_v4_payload() in the Nimbbl backend (universal.py).
+        // invoice_id is NOT part of the HMAC for v4; it is embedded in the inner payload.
+        if ($signatureVersion === 'v4') {
+            $encodedPayload = (string) ($additionalData['nimbbl_payload'] ?? '');
+
+            if (empty($encodedPayload)) {
+                throw new LocalizedException(__(
+                    'Nimbbl: v4 payload is missing. Cannot verify payment.'
+                ));
+            }
+
+            // strict=true rejects invalid base64 characters and returns false on error.
+            $rawJson = base64_decode($encodedPayload, true);
+            if ($rawJson === false || $rawJson === '') {
+                throw new LocalizedException(__(
+                    'Nimbbl: v4 payload is not valid base64. Cannot verify payment.'
+                ));
+            }
+
+            $generated = hash_hmac('sha256', $rawJson, $this->config->getKeySecret());
+
+            if ($generated !== $nimbblSignature) {
+                $this->_logger->critical('Nimbbl: v4 signature mismatch. txn_id=' . $nimbblTransactionId);
+                throw new LocalizedException(__('Nimbbl: Payment signature verification failed. Please contact support.'));
+            }
+
+            $this->_logger->info('Nimbbl: v4 callback signature verified OK. txn_id=' . $nimbblTransactionId);
+            return;
+        }
+
+        // ── v1 / v2 / v3: pipe-joined string HMAC ────────────────────────────
+        // invoice_id is required for all pipe-joined formats.
         if (empty($invoiceId)) {
             // Session expired, cleared, or double-submit. Without invoice_id the HMAC
             // string cannot be reconstructed, so the signature is unverifiable. Failing
@@ -466,7 +509,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             $txnType = (string) ($additionalData['nimbbl_txn_type'] ?? '');
             $signatureString = implode('|', [$invoiceId, $nimbblTransactionId, $amount, $currency, $status, $txnType]);
         } else {
-            // v2 legacy format
+            // v1 / v2 format (v1 omits amount+currency but v2 is the practical minimum)
             $signatureString = $invoiceId . '|' . $nimbblTransactionId . '|' . $amount . '|' . $currency;
         }
 
