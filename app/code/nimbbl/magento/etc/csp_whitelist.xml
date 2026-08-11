@@ -4,22 +4,28 @@
     <policies>
         <policy id="img-src">
             <values>
-                <value id="nimbbl_uat" type="host">uatapi.nimbbl.tech</value>
-                <value id="nimbbl_uat_docs" type="host">uatdocs.nimbbl.tech</value>
+                <value id="nimbbl_qa" type="host">api-qa1.nimbbl.tech</value>
                 <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
-                <value id="nimbbl_prod_docs" type="host">docs.nimbbl.tech</value>
             </values>
         </policy>
         <policy id="script-src">
             <values>
-                <value id="nimbbl_uat" type="host">uatapi.nimbbl.tech</value>
+                <value id="nimbbl_qa" type="host">api-qa1.nimbbl.tech</value>
                 <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
             </values>
         </policy>
         <policy id="connect-src">
             <values>
-                <value id="nimbbl_uat" type="host">uatapi.nimbbl.tech</value>
+                <value id="nimbbl_qa" type="host">api-qa1.nimbbl.tech</value>
                 <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
+                <value id="nimbbl_sonic" type="host">sonic.nimbbl.tech</value>
+                <value id="nimbbl_eventlog" type="host">eventlogpipe.nimbbl.tech</value>
+            </values>
+        </policy>
+        <policy id="frame-src">
+            <values>
+                <value id="nimbbl_sonic" type="host">sonic.nimbbl.tech</value>
+                <value id="nimbbl_qa_sonic" type="host">qa1api.qa.nimbbl.tech</value>
             </values>
         </policy>
     </policies>
