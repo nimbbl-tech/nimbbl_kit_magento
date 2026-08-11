@@ -24,46 +24,15 @@
                     <label>Merchant Name</label>
                     <config_path>payment/nimbbl/merchant_name_override</config_path>
                 </field>
-                <!-- G3: Single key pair — kept for back-compat; used when payment_mode is not set.
-                     Prefer the test/live split fields below for new installs. -->
                 <field id="key_id" translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>API Key (legacy)</label>
-                    <comment>Legacy single key ID. Use the Test / Live key pairs below for new installs.</comment>
+                    <label>API Key</label>
+                    <comment>**Required (Enter test key ID for testing)**</comment>
                     <config_path>payment/nimbbl/key_id</config_path>
                 </field>
                 <field id="key_secret" translate="label" type="obscure" sortOrder="4" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>API Key Secret (legacy)</label>
-                    <comment>Legacy single key secret. Use the Test / Live key pairs below for new installs.</comment>
+                    <label>API Key Secret</label>
+                    <comment>**Required (Enter test key secret for testing)**</comment>
                     <config_path>payment/nimbbl/key_secret</config_path>
-                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                </field>
-                <!-- G3: Test / Live key pair split (mirrors WooCommerce payment_mode) -->
-                <field id="payment_mode" translate="label" type="select" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Payment Mode</label>
-                    <comment>Sandbox uses the Test key pair; Production uses the Live key pair. Falls back to the legacy API Key fields if the active pair is empty.</comment>
-                    <source_model>Nimbbl\Magento\Model\Source\PaymentMode</source_model>
-                    <config_path>payment/nimbbl/payment_mode</config_path>
-                </field>
-                <field id="test_key_id" translate="label" type="text" sortOrder="6" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Test Key ID</label>
-                    <comment>Access key for the Nimbbl Sandbox environment.</comment>
-                    <config_path>payment/nimbbl/test_key_id</config_path>
-                </field>
-                <field id="test_key_secret" translate="label" type="obscure" sortOrder="7" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Test Key Secret</label>
-                    <comment>Secret for the Nimbbl Sandbox environment.</comment>
-                    <config_path>payment/nimbbl/test_key_secret</config_path>
-                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                </field>
-                <field id="live_key_id" translate="label" type="text" sortOrder="8" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Live Key ID</label>
-                    <comment>Access key for the Nimbbl Production environment.</comment>
-                    <config_path>payment/nimbbl/live_key_id</config_path>
-                </field>
-                <field id="live_key_secret" translate="label" type="obscure" sortOrder="9" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Live Key Secret</label>
-                    <comment>Secret for the Nimbbl Production environment.</comment>
-                    <config_path>payment/nimbbl/live_key_secret</config_path>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
                 </field>
                 <field id="environment" translate="label" type="text" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="0">

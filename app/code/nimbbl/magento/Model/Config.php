@@ -24,13 +24,6 @@ class Config
     const KEY_CHECKOUT_HOST   = 'checkout_host';
     const CHECKOUT_HOST_DEFAULT = 'https://sonic.nimbbl.tech';
 
-    // G3: Test / Live key pair split
-    const KEY_PAYMENT_MODE    = 'payment_mode';
-    const KEY_TEST_KEY_ID     = 'test_key_id';
-    const KEY_TEST_KEY_SECRET = 'test_key_secret';
-    const KEY_LIVE_KEY_ID     = 'live_key_id';
-    const KEY_LIVE_KEY_SECRET = 'live_key_secret';
-
     const API_BASE_PRODUCTION = 'https://api.nimbbl.tech/api/v3';
     const API_BASE_QA         = 'https://api-qa1.nimbbl.tech/api/v3';
 
@@ -67,65 +60,23 @@ class Config
     }
 
     /**
-     * Returns the active API access key.
-     *
-     * G3: When payment_mode is set, returns the test or live key_id based on the active mode.
-     * Falls back to the legacy key_id field for merchants that have not configured the split keys.
+     * Returns the API access key.
      *
      * @return string
      */
     public function getKeyId()
     {
-        $mode = $this->getPaymentMode();
-        if ($mode === 'sandbox') {
-            $k = trim((string) $this->getConfigData(self::KEY_TEST_KEY_ID));
-            if ($k !== '') {
-                return $k;
-            }
-        } elseif ($mode === 'production') {
-            $k = trim((string) $this->getConfigData(self::KEY_LIVE_KEY_ID));
-            if ($k !== '') {
-                return $k;
-            }
-        }
-        // Fall back to legacy single key_id
         return $this->getConfigData(self::KEY_PUBLIC_KEY);
     }
 
     /**
-     * Returns the active API key secret.
-     *
-     * G3: When payment_mode is set, returns the test or live secret based on the active mode.
-     * Falls back to the legacy key_secret field.
+     * Returns the API key secret.
      *
      * @return string
      */
     public function getKeySecret(): string
     {
-        $mode = $this->getPaymentMode();
-        if ($mode === 'sandbox') {
-            $k = trim((string) $this->getConfigData(self::KEY_TEST_KEY_SECRET));
-            if ($k !== '') {
-                return $k;
-            }
-        } elseif ($mode === 'production') {
-            $k = trim((string) $this->getConfigData(self::KEY_LIVE_KEY_SECRET));
-            if ($k !== '') {
-                return $k;
-            }
-        }
-        // Fall back to legacy key_secret
         return (string) $this->getConfigData(self::KEY_PRIVATE_KEY);
-    }
-
-    /**
-     * Returns the active payment mode: 'sandbox', 'production', or '' (unset / legacy).
-     *
-     * @return string
-     */
-    public function getPaymentMode(): string
-    {
-        return trim((string) $this->getConfigData(self::KEY_PAYMENT_MODE));
     }
 
     public function isWebhookEnabled()
