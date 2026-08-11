@@ -3,8 +3,7 @@
     "description": "Nimbbl Magento 2.0 plugin for accepting payments.",
     "version": "3.5.0",
     "require": {
-        "php": ">=7.4",
-        "nimbbl/nimbbl-sdk": "4.1.0-alpha.1"
+        "php": ">=7.4"
     },
     "keywords": [
         "nimbbl",
