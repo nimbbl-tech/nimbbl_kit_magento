@@ -96,6 +96,11 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
     protected $orderRepository;
 
     /**
+     * @var \Nimbbl\Magento\Model\NimbblClientFactory
+     */
+    protected $nimbblClientFactory;
+
+    /**
      * @param \Magento\Framework\Model\Context $context
      * @param \Magento\Framework\Registry $registry
      * @param \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory
@@ -129,8 +134,9 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
         \Magento\Directory\Model\RegionFactory $regionFactory,
         \Magento\Sales\Api\OrderRepositoryInterface $orderRepository,
         \Nimbbl\Magento\Controller\Payment\Order $order,
-        \Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
-        \Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
+        \Nimbbl\Magento\Model\NimbblClientFactory $nimbblClientFactory,
+        ?\Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
+        ?\Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
         array $data = []
     ) {
         parent::__construct(
@@ -157,7 +163,8 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
         // $this->rzp = new Api($this->key_id, $this->key_secret);
 
-        $this->order = $order;
+        $this->order               = $order;
+        $this->nimbblClientFactory = $nimbblClientFactory;
 
         // $this->rzp->setHeader('User-Agent', 'Nimbbl/'. $this->getChannel());
     }
@@ -202,33 +209,70 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
             $request = $this->getPostData();
 
-            $this->_logger->debug("Nimbbl: PaymentMethod authorize invoked with: " . json_encode($request));
+            $this->debugLog("Nimbbl: PaymentMethod authorize invoked with: " . json_encode($request));
 
-            $isWebhookCall = false;
+            $payment_id      = null;   // set in each branch; validated non-empty before use
+            $nimbbl_order_id = null;   // same
+            $paymentMode     = '';     // filled by each branch; saved to payment additional info at the end
 
-            if((empty($request) === true) and (isset($_POST['nimbbl_signature']) === true))
-            {
-                //set request data based on redirect flow
-                $request['paymentMethod']['additional_data'] = [
-                    'nimbbl_payment_id' => $_POST['nimbbl_payment_id'],
-                    'nimbbl_order_id' => $_POST['nimbbl_order_id'],
-                    'nimbbl_signature' => $_POST['nimbbl_signature']
-                ];
-            }
+            // ---- Redirect mode (checkout_mode = 'redirect') -------------------
+            // Order.php::resolveRedirectCallback() already verified the signature and
+            // stored the transaction ID on the payment object. Skip HTTP-body parsing;
+            // run the amount check + Transaction Enquiry only.
+            if ($payment->getAdditionalInformation('nimbbl_redirect_verified')) {
+                $payment_id      = (string) ($payment->getAdditionalInformation('nimbbl_payment_id') ?? '');
+                $nimbbl_order_id = $this->order->getOrderId();
 
-            if(empty($request['payload']['payment']['entity']['id']) === false)
-            {
-                $payment_id = $request['payload']['payment']['entity']['id'];
-                $nimbbl_order_id = $request['payload']['order']['entity']['id'];
+                // payment_mode was set by Order.php::resolveRedirectCallback().
+                $paymentMode = (string) ($payment->getAdditionalInformation('nimbbl_payment_mode') ?? '');
 
-                $isWebhookCall = true;
-                //validate that request is from webhook only
+                // Clear the one-time verification flag immediately. If authorize() is ever
+                // called again on this payment object (admin retry, third-party extension),
+                // the redirect branch must not fire with stale transaction data.
+                $payment->unsAdditionalInformation('nimbbl_redirect_verified');
 
-                // TODO: Implement our own webhook signature verification.
-                // $this->validateWebhookSignature($request);
-            }
-            else
-            {
+                $orderAmount = (int) (number_format($order->getGrandTotal() * 100, 0, ".", ""));
+                if ($orderAmount !== $this->order->getNimbblOrderAmount()) {
+                    $rzpOrderAmount = $order->getOrderCurrency()->formatTxt(
+                        number_format($this->order->getNimbblOrderAmount() / 100, 2, ".", "")
+                    );
+                    throw new LocalizedException(__(
+                        "Cart order amount = %1 doesn't match with amount paid = %2",
+                        $order->getOrderCurrency()->formatTxt($order->getGrandTotal()),
+                        $rzpOrderAmount
+                    ));
+                }
+
+                // Transaction Enquiry: authoritative server-side confirmation.
+                // Also enriches payment_mode if not already set from Order.php.
+                if (!empty($payment_id)) {
+                    $txnData = $this->verifyTransactionWithApi(
+                        $payment_id,
+                        $order->getGrandTotal(),
+                        $order->getOrderCurrencyCode() ?: 'INR'
+                    );
+                    if (empty($paymentMode)) {
+                        $paymentMode = (string) ($txnData['payment_mode'] ?? '');
+                    }
+                }
+
+            // ---- Popup / standard checkout (and legacy individual-field redirect) ---
+            // NOTE: The old codebase had a "webhook call" branch here that read
+            // payload.payment.entity.id from php://input without any signature check.
+            // That branch was removed: it was dead code (actual webhooks go to Webhook.php)
+            // and represented an attack surface — any POST body with that field set could
+            // enter the branch with an attacker-supplied transaction ID.
+            } else {
+                // Legacy redirect compatibility: if body was empty but individual POST
+                // fields were sent (old Razorpay-style), reconstruct additional_data.
+                if (empty($request) && isset($_POST['nimbbl_signature'])) {
+                    $request['paymentMethod']['additional_data'] = [
+                        'nimbbl_payment_id' => $_POST['nimbbl_payment_id'] ?? '',
+                        'nimbbl_order_id'   => $_POST['nimbbl_order_id']   ?? '',
+                        'nimbbl_signature'  => $_POST['nimbbl_signature']   ?? '',
+                    ];
+                }
+
                 if (isset($request['paymentMethod']['additional_data']['nimbbl_payment_id'])) {
                     $payment_id = $request['paymentMethod']['additional_data']['nimbbl_payment_id'];
                 }
@@ -238,15 +282,43 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                 //validate NimbblOrderamount with quote/order amount before signature
                 $orderAmount = (int) (number_format($order->getGrandTotal() * 100, 0, ".", ""));
 
-                if ($orderAmount !== $this->order->getNimbblOrderAmount())
-                {
-                    $rzpOrderAmount = $order->getOrderCurrency()->formatTxt(number_format($this->order->getNimbblOrderAmount() / 100, 2, ".", ""));
-
-                    throw new LocalizedException(__("Cart order amount = %1 doesn't match with amount paid = %2", $order->getOrderCurrency()->formatTxt($order->getGrandTotal()), $rzpOrderAmount));
+                if ($orderAmount !== $this->order->getNimbblOrderAmount()) {
+                    $rzpOrderAmount = $order->getOrderCurrency()->formatTxt(
+                        number_format($this->order->getNimbblOrderAmount() / 100, 2, ".", "")
+                    );
+                    throw new LocalizedException(__(
+                        "Cart order amount = %1 doesn't match with amount paid = %2",
+                        $order->getOrderCurrency()->formatTxt($order->getGrandTotal()),
+                        $rzpOrderAmount
+                    ));
                 }
 
-                // TODO: Implement our own signature verification.
-                // $this->validateSignature($request);
+                $additionalData = $request['paymentMethod']['additional_data'] ?? [];
+
+                // 1. HMAC signature verification (fast, no network round-trip).
+                if (!empty($additionalData['nimbbl_signature'])) {
+                    $invoiceId = $this->order->getNimbblInvoiceId();
+                    $currency  = $order->getOrderCurrencyCode() ?: 'INR';
+                    $this->verifyNimbblCallbackSignature($additionalData, $invoiceId, $order->getGrandTotal(), $currency);
+                }
+
+                // 2. Transaction Enquiry API — authoritative server-side status check.
+                // The returned txnData carries payment_mode for storage below.
+                $nimbblTxnId = $additionalData['nimbbl_payment_id'] ?? $payment_id ?? '';
+                if (!empty($nimbblTxnId)) {
+                    $txnData = $this->verifyTransactionWithApi(
+                        (string) $nimbblTxnId,
+                        $order->getGrandTotal(),
+                        $order->getOrderCurrencyCode() ?: 'INR'
+                    );
+                    $paymentMode = (string) ($txnData['payment_mode'] ?? '');
+                }
+            }
+
+            if (empty($payment_id)) {
+                throw new LocalizedException(__(
+                    'Nimbbl: Transaction ID is missing. Cannot record payment. Please contact support.'
+                ));
             }
 
             $payment->setStatus(self::STATUS_APPROVED)
@@ -256,13 +328,48 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                     ->setIsTransactionClosed(true)
                     ->setShouldCloseParentTransaction(true);
 
+            // Persist invoice_id and payment_mode as payment additional information so
+            // they are available on the admin Order View and customer Order Details pages.
+            $invoiceId = $this->order->getNimbblInvoiceId();
+            if (!empty($invoiceId)) {
+                $payment->setAdditionalInformation('nimbbl_invoice_id', $invoiceId);
+            }
+            if (!empty($paymentMode)) {
+                $payment->setAdditionalInformation('nimbbl_payment_mode', $paymentMode);
+            }
+
             // update the Nimbbl payment with corresponding created order ID of this quote ID
-            $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id, $isWebhookCall);
+            // Frontend path: always marks by_frontend = true (webhook path goes via Webhook.php).
+            $this->updatePaymentNote($payment_id, $order, $nimbbl_order_id);
         }
         catch (\Exception $e)
         {
             $this->_logger->critical($e);
-            throw new LocalizedException(__('Nimbbl Error: %1.', $e->getMessage()));
+            // FIX-3: Never expose raw transaction IDs or internal status strings in the
+            // user-facing message. Log the full exception for ops; surface a clean,
+            // actionable message to the customer.
+            //
+            // Distinguish two cases:
+            //   a) Transaction Enquiry rejected the payment (status check failure, amount
+            //      mismatch) — the payment definitely did not go through.
+            //   b) Any other exception (network error, config issue, etc.).
+            $rawMsg = $e->getMessage();
+            if (
+                str_contains($rawMsg, 'Transaction Enquiry') ||
+                str_contains($rawMsg, 'Transaction amount mismatch') ||
+                str_contains($rawMsg, 'Transaction ID is missing')
+            ) {
+                // Payment was not confirmed — tell the customer clearly without exposing
+                // the internal txn_id or API status value.
+                throw new LocalizedException(__(
+                    'Your payment could not be verified. If any amount was debited, ' .
+                    'it will be refunded automatically. Please contact support with your order number.'
+                ));
+            }
+            // Generic failure — configuration, network, or unexpected error.
+            throw new LocalizedException(__(
+                'Payment processing failed. Please try again or contact support.'
+            ));
         }
 
         return $this;
@@ -287,27 +394,19 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
     }
 
     /**
-     * Update the payment note with Magento frontend OrderID
+     * Update the OrderLink row with the Magento increment_order_id and the Nimbbl
+     * payment (transaction) ID, and mark the row as fulfilled via the frontend path.
      *
-     * @param string $paymentId
-     * @param object $order
-     * @param object $nimbblOrderId
-     * @param object $$isWebhookCall
+     * The webhook path (Webhook.php::markOrderLinkWebhookFulfilled()) handles the
+     * by_webhook case directly; this method is only ever called from authorize(),
+     * which is the browser-side checkout flow.
+     *
+     * @param string $paymentId     Nimbbl transaction ID from the checkout callback
+     * @param object $order         Magento Sales Order model
+     * @param string $nimbblOrderId Nimbbl Order ID (from the OrderLink row)
      */
-    protected function updatePaymentNote($paymentId, $order, $nimbblOrderId, $isWebhookCall)
+    protected function updatePaymentNote($paymentId, $order, $nimbblOrderId)
     {
-        // TODO: Figure this out not sure what this is going to be used for...
-        // update the Nimbbl payment with corresponding created order ID of this quote ID
-        // $this->rzp->payment->fetch($paymentId)->edit(
-        //     array(
-        //         'notes' => array(
-        //             'merchant_order_id' => $order->getIncrementId(),
-        //             'merchant_quote_id' => $order->getQuoteId()
-        //         )
-        //     )
-        // );
-
-        //update orderLink
         $_objectManager  = \Magento\Framework\App\ObjectManager::getInstance();
 
         $orderLinkCollection = $_objectManager->get('Nimbbl\Magento\Model\OrderLink')
@@ -319,46 +418,151 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
         $orderLink = $orderLinkCollection->getData();
 
-        if (empty($orderLink['entity_id']) === false)
-        {
-
+        if (!empty($orderLink['entity_id'])) {
             $orderLinkCollection->setNimbblPaymentId($paymentId)
-                                ->setIncrementOrderId($order->getIncrementId());
-
-            if ($isWebhookCall)
-            {
-                $orderLinkCollection->setByWebhook(true)->save();
-            }
-            else
-            {
-                $orderLinkCollection->setByFrontend(true)->save();
-            }
+                                ->setIncrementOrderId($order->getIncrementId())
+                                ->setByFrontend(true)
+                                ->save();
         }
-
     }
 
-    // protected function validateSignature($request)
-    // {
-    //     $attributes = array(
-    //         'nimbbl_payment_id' => $request['paymentMethod']['additional_data']['nimbbl_payment_id'],
-    //         'nimbbl_order_id'   => $this->order->getOrderId(),
-    //         'nimbbl_signature'  => $request['paymentMethod']['additional_data']['nimbbl_signature'],
-    //     );
+    /**
+     * Verify the HMAC signature returned by the Nimbbl checkout SDK callback handler.
+     *
+     * Mirrors the WooCommerce plugin's verify_nimbbl_payment_signature() logic.
+     * Supports v3 and v2 signature formats.
+     *
+     * @param array  $additionalData  Payment additional_data from JS getData()
+     * @param string $invoiceId       Our invoice_id sent to Nimbbl (from session)
+     * @param float  $grandTotal      Order grand total (Magento value — cannot be spoofed by client)
+     * @param string $currency        Order currency code (e.g. INR)
+     * @throws LocalizedException    If signature does not match
+     */
+    protected function verifyNimbblCallbackSignature(array $additionalData, string $invoiceId, float $grandTotal, string $currency): void
+    {
+        $nimbblTransactionId = (string) ($additionalData['nimbbl_payment_id'] ?? '');
+        $nimbblSignature     = (string) ($additionalData['nimbbl_signature'] ?? '');
+        $signatureVersion    = (string) ($additionalData['nimbbl_signature_version'] ?? 'v2');
 
-    //     $this->rzp->utility->verifyPaymentSignature($attributes);
-    // }
+        if (empty($nimbblSignature)) {
+            throw new LocalizedException(__('Nimbbl: Payment signature is missing. Cannot verify payment.'));
+        }
 
-    // /**
-    //  * [validateWebhookSignature Used in case of webhook request for payment auth]
-    //  * @param  array  $post
-    //  * @return [type]
-    //  */
-    // public  function validateWebhookSignature(array $post)
-    // {
-    //     $webhookSecret = $this->config->getWebhookSecret();
+        if (empty($invoiceId)) {
+            // Session expired, cleared, or double-submit. Without invoice_id the HMAC
+            // string cannot be reconstructed, so the signature is unverifiable. Failing
+            // closed here is safer than silently skipping — if the Transaction Enquiry API
+            // is also unreachable, no verification would run at all.
+            throw new LocalizedException(__(
+                'Nimbbl: Invoice ID is missing from the session. Cannot verify payment signature. ' .
+                'Please restart checkout.'
+            ));
+        }
 
-    //     $this->rzp->utility->verifyWebhookSignature(json_encode($post), $_SERVER['HTTP_X_NIMBBL_SIGNATURE'], $webhookSecret);
-    // }
+        $amount = $this->formatSignatureAmount($grandTotal);
+
+        if ($signatureVersion === 'v3') {
+            $status  = (string) ($additionalData['nimbbl_status'] ?? 'success');
+            $txnType = (string) ($additionalData['nimbbl_txn_type'] ?? '');
+            $signatureString = implode('|', [$invoiceId, $nimbblTransactionId, $amount, $currency, $status, $txnType]);
+        } else {
+            // v2 legacy format
+            $signatureString = $invoiceId . '|' . $nimbblTransactionId . '|' . $amount . '|' . $currency;
+        }
+
+        $generated = hash_hmac('sha256', $signatureString, (string) $this->key_secret);
+
+        if ($generated !== $nimbblSignature) {
+            $this->_logger->critical('Nimbbl: signature mismatch. version=' . $signatureVersion .
+                ' invoice_id=' . $invoiceId . ' txn_id=' . $nimbblTransactionId);
+            throw new LocalizedException(__('Nimbbl: Payment signature verification failed. Please contact support.'));
+        }
+
+        $this->_logger->info('Nimbbl: callback signature verified OK. version=' . $signatureVersion .
+            ' txn_id=' . $nimbblTransactionId);
+    }
+
+    /**
+     * Call the Nimbbl Transaction Enquiry API to confirm the transaction is genuine.
+     *
+     * This is an authoritative server-to-server check — it catches replayed callbacks,
+     * recycled transaction IDs, and any case where the HMAC alone is insufficient.
+     *
+     * Failures are logged but do NOT throw when the API itself is unreachable
+     * (network timeouts, 5xx) to avoid blocking legitimate orders during Nimbbl outages.
+     * Genuine fraud signals (wrong amount / non-success status) DO throw.
+     *
+     * @param string $nimbblTransactionId  From the checkout callback
+     * @param float  $magentoGrandTotal    From the Magento order (server-side value)
+     * @param string $currency             From the Magento order
+     * @return array                       The raw transaction record from Nimbbl API (empty on network error)
+     * @throws LocalizedException          On definite fraud signals
+     */
+    protected function verifyTransactionWithApi(string $nimbblTransactionId, float $magentoGrandTotal, string $currency): array
+    {
+        try {
+            $client   = $this->nimbblClientFactory->create();
+            $txnData  = $client->transactions()->fetch($nimbblTransactionId);
+
+            $apiStatus   = strtolower(trim((string) ($txnData['payment_status'] ?? ($txnData['status'] ?? ''))));
+            $apiAmount   = (float) ($txnData['total_amount'] ?? ($txnData['amount'] ?? 0));
+            $apiCurrency = strtoupper(trim((string) ($txnData['currency'] ?? '')));
+
+            $this->_logger->info('Nimbbl: Transaction Enquiry result — txn_id=' . $nimbblTransactionId .
+                ' status=' . $apiStatus . ' amount=' . $apiAmount . ' currency=' . $apiCurrency);
+
+            // Definite fraud: transaction is explicitly failed or in a non-payment state.
+            $successStatuses = ['success', 'succeeded', 'authorized'];
+            if ($apiStatus !== '' && !in_array($apiStatus, $successStatuses, true)) {
+                throw new LocalizedException(__(
+                    'Nimbbl: Transaction Enquiry shows status "%1" for transaction %2. Payment not confirmed.',
+                    $apiStatus,
+                    $nimbblTransactionId
+                ));
+            }
+
+            // Amount mismatch — allow 1-paisa tolerance for floating-point edge cases.
+            if ($apiAmount > 0 && abs($apiAmount - $magentoGrandTotal) > 0.01) {
+                throw new LocalizedException(__(
+                    'Nimbbl: Transaction amount mismatch. Expected %1 %2, Nimbbl reports %3 %4.',
+                    $currency,
+                    number_format($magentoGrandTotal, 2),
+                    $apiCurrency ?: $currency,
+                    number_format($apiAmount, 2)
+                ));
+            }
+
+            $this->_logger->info('Nimbbl: Transaction Enquiry passed — txn_id=' . $nimbblTransactionId);
+
+            return $txnData;
+
+        } catch (LocalizedException $e) {
+            // Re-throw fraud signals — do not swallow.
+            throw $e;
+        } catch (\Exception $e) {
+            // Network error, timeout, or unexpected response: log and allow order through
+            // to avoid blocking real payments during Nimbbl maintenance windows.
+            $this->_logger->warning('Nimbbl: Transaction Enquiry API unreachable — allowing order through. ' .
+                'txn_id=' . $nimbblTransactionId . ' error=' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Normalise a grand-total float to exactly 2 decimal places for HMAC string construction.
+     * Must match the format Nimbbl uses server-side (same logic as Webhook.php formatAmount()).
+     */
+    protected function formatSignatureAmount(float $amount): string
+    {
+        $inp   = str_replace(',', '', number_format($amount, 2, '.', ''));
+        $parts = explode('.', $inp);
+
+        if (count($parts) === 1) {
+            return $parts[0] . '.00';
+        }
+
+        return $parts[0] . '.' . str_pad(substr($parts[1], 0, 2), 2, '0');
+    }
 
     protected function getPostData()
     {
@@ -368,16 +572,107 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
     }
 
     /**
-     * Refunds specified amount
+     * Refunds the specified amount via the Nimbbl Refund API.
+     *
+     * Triggered when a merchant creates a Credit Memo from the admin panel.
+     * The webhook (refund_success / refund_failed) will arrive later and update
+     * the order status; this method only initiates the refund.
      *
      * @param InfoInterface $payment
-     * @param float $amount
+     * @param float         $amount  Refund amount in store currency
      * @return $this
      * @throws LocalizedException
      */
     public function refund(InfoInterface $payment, $amount)
     {
+        /** @var \Magento\Sales\Model\Order\Payment $payment */
+        $order    = $payment->getOrder();
+        $txnId    = $payment->getLastTransId();
+        $currency = strtoupper($order->getOrderCurrencyCode() ?: 'INR');
+
+        if (empty($txnId)) {
+            throw new LocalizedException(
+                __('Nimbbl: Cannot initiate refund — no transaction ID found on this payment. Please refund directly from the Nimbbl dashboard.')
+            );
+        }
+
+        try {
+            $client = $this->nimbblClientFactory->create();
+            $result = $client->refunds()->create($txnId, (float) $amount, $currency, 'merchant_initiated');
+
+            $refundId = (string) ($result['refund_id'] ?? ($result['id'] ?? ''));
+
+            $this->_logger->info(
+                'Nimbbl: Refund initiated — txn_id=' . $txnId .
+                ' amount=' . number_format($amount, 2) . ' ' . $currency .
+                ' refund_id=' . $refundId
+            );
+
+            // Store the refund ID as the child transaction ID on the payment.
+            $payment->setTransactionId($refundId ?: ($txnId . '-refund'))
+                    ->setIsTransactionClosed(true)
+                    ->setShouldCloseParentTransaction(true);
+
+            // Record the refund ID on the order link row for the webhook to match later.
+            if (!empty($refundId)) {
+                $this->updateOrderLinkRefundId($order->getQuoteId(), $refundId);
+            }
+
+        } catch (\Exception $e) {
+            $this->_logger->critical('Nimbbl: Refund API error — ' . $e->getMessage());
+            throw new LocalizedException(__('Nimbbl Refund Error: %1', $e->getMessage()));
+        }
+
         return $this;
+    }
+
+    /**
+     * Persist the Nimbbl refund_id against the OrderLink row so the webhook can match it.
+     */
+    protected function updateOrderLinkRefundId($quoteId, string $refundId): void
+    {
+        try {
+            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+            $orderLink = $objectManager->get('Nimbbl\Magento\Model\OrderLink')
+                ->getCollection()
+                ->addFilter('quote_id', $quoteId)
+                ->getFirstItem();
+
+            if ($orderLink && $orderLink->getId()) {
+                // nimbbl_payment_id column is repurposed here to store the refund ID alongside
+                // the original transaction; this is a best-effort annotation — not critical.
+                $orderLink->setData('nimbbl_refund_id', $refundId)->save();
+            }
+        } catch (\Exception $e) {
+            // Non-fatal: refund was initiated successfully; only the annotation failed.
+            $this->_logger->warning('Nimbbl: Could not update OrderLink with refund_id — ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Returns true when the payment mode string represents Cash on Delivery.
+     *
+     * COD payments are collected physically on delivery, so the digital payment
+     * confirmation is informational only — the order should stay in STATE_PROCESSING
+     * rather than being marked complete immediately.
+     * Mirrors Webhook.php::isCodPaymentMode() and WooCommerce's equivalent helper.
+     */
+    private function isCodPaymentMode(string $mode): bool
+    {
+        return strtolower(trim($mode)) === 'cash on delivery';
+    }
+
+    /**
+     * Write a debug message only when Debug Logging is enabled in admin config.
+     *
+     * Use this instead of $this->_logger->debug() directly so verbose output
+     * can be suppressed in production without a code deploy.
+     */
+    private function debugLog(string $message): void
+    {
+        if ($this->config->isDebugEnabled()) {
+            $this->_logger->debug($message);
+        }
     }
 
     /**

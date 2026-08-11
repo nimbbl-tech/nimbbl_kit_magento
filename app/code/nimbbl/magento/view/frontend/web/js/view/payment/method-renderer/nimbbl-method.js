@@ -302,6 +302,7 @@ define(
                      * @param {*} response
                      */
                     error: function(response) {
+                        // FIX-4: Stop loader on network/server error during order-check polling.
                         fullScreenLoader.stopLoader();
                         self.isPaymentProcessing.reject(response.message);
                     }
@@ -360,8 +361,26 @@ define(
                     // P3: API host for NimbblCheckout — mirrors WooCommerce api_host token.
                     "apiHost": (window.checkoutConfig.payment.nimbbl.api_host || ''),
                     "callback_handler": function(response) {
+                        // Mark that callback_handler fired so the dismiss guard (below) knows
+                        // not to reject the deferred a second time.
+                        _callbackFired = true;
+
                         if (response.status === 'failed') {
-                            self.isPaymentProcessing.reject("Payment Closed: " + response.reason);
+                            // FIX-2: Map Nimbbl reason codes to human-readable messages instead
+                            // of showing raw "Payment Closed: undefined" / "Payment Closed: user_cancel".
+                            var _reasonMap = {
+                                'user_cancel':   $.mage.__('Payment was cancelled. Please try again.'),
+                                'user_cancelled': $.mage.__('Payment was cancelled. Please try again.'),
+                                'timeout':        $.mage.__('The payment session timed out. Please try again.'),
+                                'bank_declined':  $.mage.__('Your payment was declined by the bank. Please try a different method.'),
+                                'insufficient_funds': $.mage.__('Insufficient funds. Please try a different payment method.')
+                            };
+                            var _rawReason = (typeof response.reason === 'string') ? response.reason : '';
+                            var _failMsg   = _reasonMap[_rawReason]
+                                || (typeof response.message === 'string' && response.message ? response.message : null)
+                                || $.mage.__('Payment could not be completed. Please try again.');
+                            fullScreenLoader.stopLoader();
+                            self.isPaymentProcessing.reject(_failMsg);
                         } else {
                             // Capture everything needed for server-side HMAC verification.
                             // nimbbl_payment_id is an alias for nimbbl_transaction_id (used by getData()).
@@ -376,18 +395,20 @@ define(
                             data['nimbbl_txn_type']            = response.transaction_type || response.txn_type || '';
 
                             self.nimbbl_response = data;
+                            // FIX-4: Re-enable loader while checkNimbblOrder polls / places the order.
+                            // The loader was stopped inside createNimbblOrder.success (before the popup
+                            // opened). Without this, the checkout page appears frozen after the popup
+                            // closes. Mirrors Razorpay's behaviour.
+                            fullScreenLoader.startLoader();
                             self.checkNimbblOrder(data);
                         }
-
-                        // let response_payload = {
-                        //     "payload": response
-                        // }
-                        // let stringify_response = JSON.stringify(response_payload);
-                        // let encoded_response = btoa(stringify_response);
-                        // location.href = 'https://uatshop.nimbbl.tech/thank-you?esponse=' + encoded_response;
                     },
                     "custom": {},
                 };
+
+                // FIX-1: Track whether callback_handler fired so the dismiss guard below
+                // does not double-reject if the SDK also calls callback_handler on close.
+                var _callbackFired = false;
 
                 // Magento's RequireJS intercepts AMD define() inside checkout.js, so
                 // MicroModal ends up as a RequireJS module rather than window.MicroModal.
@@ -398,6 +419,21 @@ define(
                     window.MicroModal = mm;
                     window.nimbblCheckout = new NimbblCheckout(options);
                     window.nimbblCheckout.open(data.nimbbl_order);
+
+                    // FIX-1: Dismiss guard — fires if the user closes the Nimbbl popup
+                    // without completing payment AND the SDK did not call callback_handler.
+                    // Without this, the checkout page returns to idle with zero feedback.
+                    // Uses MicroModal's 'micromodal-close' custom event (dispatched on the
+                    // trigger element or document when any MicroModal instance closes).
+                    // { once: true } ensures it cleans up after the first close event.
+                    document.addEventListener('micromodal-close', function _nimbblDismissGuard() {
+                        if (!_callbackFired) {
+                            fullScreenLoader.stopLoader();
+                            self.isPaymentProcessing.reject(
+                                $.mage.__('Payment was cancelled. Please try again.')
+                            );
+                        }
+                    }, { once: true });
                 });
 
             },
