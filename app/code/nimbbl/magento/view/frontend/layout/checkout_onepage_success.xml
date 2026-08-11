@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+    Injects the Nimbbl payment details panel into the checkout success page.
+
+    Uses the `checkout.success` container which exists in Magento core and in
+    virtually every theme (Luma, Hyva, Argento, Porto, etc.).
+    `order.success.additional.info` is a Luma-only sub-container and is absent
+    in non-Luma themes, causing a layout exception that can blank the success page.
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="checkout.success">
+            <block class="Nimbbl\Magento\Block\Frontend\Order\NimbblInfo"
+                   name="nimbbl.order.success.info"
+                   template="Nimbbl_Magento::order/nimbbl_info.phtml"
+                   after="-" />
+        </referenceContainer>
+    </body>
+</page>

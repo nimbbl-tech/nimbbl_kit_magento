@@ -6,6 +6,7 @@
             <values>
                 <value id="nimbbl_qa" type="host">api-qa1.nimbbl.tech</value>
                 <value id="nimbbl_prod" type="host">api.nimbbl.tech</value>
+                <value id="nimbbl_docs" type="host">docs.nimbbl.tech</value>
             </values>
         </policy>
         <policy id="script-src">

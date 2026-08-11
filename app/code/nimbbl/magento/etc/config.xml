@@ -12,6 +12,10 @@
                 <key_id>Key ID</key_id>
                 <key_secret>Key Secret</key_secret>
                 <webhook_wait_time>300</webhook_wait_time>
+                <environment>https://api.nimbbl.tech/api/v3</environment>
+                <checkout_mode>popup</checkout_mode>
+                <express_checkout>0</express_checkout>
+                <debug_mode>0</debug_mode>
             </nimbbl>
         </payment>
     </default>

@@ -1,0 +1,43 @@
+<?php
+/**
+ * @var \Nimbbl\Magento\Block\Frontend\Order\NimbblInfo $block
+ */
+
+// Only render when the order was paid via Nimbbl.
+if (!$block->isNimbblOrder()) {
+    return;
+}
+
+$nimbblOrderId = $block->escapeHtml($block->getNimbblOrderId());
+$invoiceId     = $block->escapeHtml($block->getInvoiceId());
+$nimbblTxnId   = $block->escapeHtml($block->getNimbblTransactionId());
+$paymentMode   = $block->escapeHtml($block->getPaymentMode());
+?>
+<div class="block block-order-details-view nimbbl-payment-details">
+    <div class="block-title">
+        <strong><?= $block->escapeHtml(__('Nimbbl Payment Details')) ?></strong>
+    </div>
+    <div class="block-content">
+        <dl class="order-details">
+            <?php if ($nimbblOrderId): ?>
+            <dt class="item-title"><?= $block->escapeHtml(__('Nimbbl Order ID')) ?></dt>
+            <dd class="item-value"><?= $nimbblOrderId ?></dd>
+            <?php endif; ?>
+
+            <?php if ($invoiceId): ?>
+            <dt class="item-title"><?= $block->escapeHtml(__('Invoice ID')) ?></dt>
+            <dd class="item-value"><?= $invoiceId ?></dd>
+            <?php endif; ?>
+
+            <?php if ($nimbblTxnId): ?>
+            <dt class="item-title"><?= $block->escapeHtml(__('Transaction ID')) ?></dt>
+            <dd class="item-value"><?= $nimbblTxnId ?></dd>
+            <?php endif; ?>
+
+            <?php if ($paymentMode): ?>
+            <dt class="item-title"><?= $block->escapeHtml(__('Payment Mode')) ?></dt>
+            <dd class="item-value"><?= $paymentMode ?></dd>
+            <?php endif; ?>
+        </dl>
+    </div>
+</div>

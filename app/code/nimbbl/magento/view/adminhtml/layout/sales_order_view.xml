@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!--
+    Injects the Nimbbl payment info panel into the admin Order View page.
+    Appears in the right-hand "order_additional_info" column, after the
+    standard payment information block.
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="order_additional_info">
+            <block class="Nimbbl\Magento\Block\Adminhtml\Order\View\NimbblInfo"
+                   name="nimbbl_order_payment_info"
+                   template="Nimbbl_Magento::order/view/nimbbl_info.phtml"
+                   after="-"/>
+        </referenceContainer>
+    </body>
+</page>

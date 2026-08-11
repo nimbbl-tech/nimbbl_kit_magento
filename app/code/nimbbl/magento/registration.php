@@ -27,4 +27,4 @@ spl_autoload_register(function (string $class): void {
     if (is_file($file)) {
         require_once $file;
     }
-}, false, false);
+});
