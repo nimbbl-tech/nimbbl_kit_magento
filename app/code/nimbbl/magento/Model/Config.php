@@ -23,7 +23,6 @@ class Config
     const CHECKOUT_HOST_DEFAULT = 'https://sonic.nimbbl.tech';
 
     const API_BASE_PRODUCTION = 'https://api.nimbbl.tech';
-    const API_BASE_QA         = 'https://api-qa1.nimbbl.tech';
 
     /**
      * @var string
