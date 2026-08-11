@@ -350,6 +350,10 @@ define(
                 //     options.display_amount = data.quote_amount;
                 // }
 
+                // FIX-1: Declare before `options` so readers see it before the callback that references it.
+                // (var hoisting makes order irrelevant at runtime, but source-order clarity matters.)
+                var _callbackFired = false;
+
                 // Options for the nimbbl checkout.
                 var options = {
                     "access_key":   self.getKeyId(), // Enter the Key ID generated from the Dashboard
@@ -405,10 +409,6 @@ define(
                     },
                     "custom": {},
                 };
-
-                // FIX-1: Track whether callback_handler fired so the dismiss guard below
-                // does not double-reject if the SDK also calls callback_handler on close.
-                var _callbackFired = false;
 
                 // Magento's RequireJS intercepts AMD define() inside checkout.js, so
                 // MicroModal ends up as a RequireJS module rather than window.MicroModal.

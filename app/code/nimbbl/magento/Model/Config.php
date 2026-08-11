@@ -236,6 +236,34 @@ class Config
     }
 
     /**
+     * Returns true when the payment mode string represents Cash on Delivery.
+     *
+     * COD payments are collected physically on delivery; a confirmed COD event
+     * means the merchant should prepare to ship, but the order must not be
+     * marked complete until cash is physically received.
+     * Mirrors WooCommerce's is_cod_payment_mode().
+     */
+    public static function isCodPaymentMode(string $mode): bool
+    {
+        return strtolower(trim($mode)) === 'cash on delivery';
+    }
+
+    /**
+     * Normalise an amount (float or string) to exactly 2 decimal places.
+     *
+     * Used when building HMAC signature strings that must match the format
+     * Nimbbl uses server-side. Strips any thousand-separator commas first.
+     * Mirrors WooCommerce format_amount().
+     *
+     * @param  float|string $amount
+     * @return string  e.g. "1234.56"
+     */
+    public static function normalizeAmount($amount): string
+    {
+        return number_format((float) str_replace(',', '', (string) $amount), 2, '.', '');
+    }
+
+    /**
      * @param int $storeId
      * @return $this
      */

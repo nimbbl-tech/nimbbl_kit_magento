@@ -260,7 +260,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
                     $order->setState(SalesOrder::STATE_PROCESSING)->setStatus($configStatus);
 
                     $modeLabel = $paymentMode ? ' Payment mode: ' . $paymentMode : '';
-                    if ($this->isCodPaymentMode($paymentMode)) {
+                    if (\Nimbbl\Magento\Model\Config::isCodPaymentMode($paymentMode)) {
                         $order->addCommentToStatusHistory(
                             'Payment via Cash on Delivery confirmed (Nimbbl webhook). Transaction ID: ' .
                             $nimbblTransactionId . $modeLabel
@@ -353,39 +353,12 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
 
             // -----------------------------------------------------------------
             case 'refund_success':
-                $orderTxnId    = $order->getPayment()->getLastTransId();
-                $webhookTxnId  = trim($nimbblTransactionId);
-
-                // Ignore if transaction IDs are both non-empty and don't match.
-                if ($webhookTxnId !== '' && $orderTxnId !== '' && $webhookTxnId !== $orderTxnId) {
-                    $this->logger->info('Nimbbl Webhook: refund_success — txn ID mismatch, ignoring. ' .
-                        'order_txn=' . $orderTxnId . ' webhook_txn=' . $webhookTxnId);
-                    break;
-                }
-
-                $refundId = (string) ($webhookData['refund_id'] ?? ($webhookData['refund']['refund_id'] ?? ''));
-                $note     = 'Refund successful (from Nimbbl webhook).' . ($refundId ? ' Refund ID: ' . $refundId : '');
-                $order->setState(SalesOrder::STATE_CLOSED)->setStatus('closed');
-                $order->addCommentToStatusHistory($note);
-                $order->save();
-                $this->logger->info('Nimbbl Webhook: refund_success — order ' . $order->getIncrementId());
+                $this->handleRefundEvent($order, $webhookData, $nimbblTransactionId, true);
                 break;
 
             // -----------------------------------------------------------------
             case 'refund_failed':
-                $orderTxnId   = $order->getPayment()->getLastTransId();
-                $webhookTxnId = trim($nimbblTransactionId);
-
-                if ($webhookTxnId !== '' && $orderTxnId !== '' && $webhookTxnId !== $orderTxnId) {
-                    $this->logger->info('Nimbbl Webhook: refund_failed — txn ID mismatch, ignoring.');
-                    break;
-                }
-
-                $refundId = (string) ($webhookData['refund_id'] ?? ($webhookData['refund']['refund_id'] ?? ''));
-                $note     = 'Refund failed (from Nimbbl webhook).' . ($refundId ? ' Refund ID: ' . $refundId : '');
-                $order->addCommentToStatusHistory($note);
-                $order->save();
-                $this->logger->info('Nimbbl Webhook: refund_failed — order ' . $order->getIncrementId());
+                $this->handleRefundEvent($order, $webhookData, $nimbblTransactionId, false);
                 break;
 
             // -----------------------------------------------------------------
@@ -422,40 +395,49 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
     /**
      * Resolve a Magento order from webhook payload.
      *
-     * Strategy 1 — parse quote_id from our invoice_id format:
-     *   inv_nimbbl_magento_{quoteId}_{uniqid}
-     *
-     * Strategy 2 — look up OrderLink by nimbbl_order_id → quote_id → sales order.
+     * Delegates quote_id resolution to resolveQuoteIdFromWebhookData() then fetches
+     * the corresponding sales order.
      */
     protected function getOrderFromWebhookData(array $webhookData): ?SalesOrder
     {
-        $invoiceId    = trim((string) ($webhookData['order']['invoice_id'] ?? ''));
-        $nimbblOrderId = trim((string) ($webhookData['nimbbl_order_id'] ?? ''));
+        $quoteId = $this->resolveQuoteIdFromWebhookData($webhookData);
+        if ($quoteId === null) {
+            return null;
+        }
+        $order = $this->getOrderByQuoteId($quoteId);
+        if ($order) {
+            $this->debugLog('Nimbbl Webhook: resolved order for quoteId=' . $quoteId);
+        }
+        return $order;
+    }
 
+    /**
+     * Resolve the Magento quote_id from a webhook payload using two strategies:
+     *
+     * Strategy 1 — parse quote_id from our invoice_id format:
+     *   inv_nimbbl_magento_{quoteId}_{uniqid}
+     *
+     * Strategy 2 — look up OrderLink by nimbbl_order_id → quote_id.
+     */
+    private function resolveQuoteIdFromWebhookData(array $webhookData): ?int
+    {
         // Strategy 1: invoice_id format = inv_nimbbl_magento_{quoteId}_{uniqid}
+        $invoiceId = trim((string) ($webhookData['order']['invoice_id'] ?? ''));
         if ($invoiceId !== '' && preg_match('/^inv_nimbbl_magento_(\d+)_/', $invoiceId, $m)) {
-            $order = $this->getOrderByQuoteId((int) $m[1]);
-            if ($order) {
-                $this->debugLog('Nimbbl Webhook: resolved order via invoice_id quote_id=' . $m[1]);
-                return $order;
-            }
+            return (int) $m[1];
         }
 
         // Strategy 2: OrderLink table keyed on nimbbl_order_id
+        $nimbblOrderId = trim((string) ($webhookData['nimbbl_order_id'] ?? ''));
         if ($nimbblOrderId !== '') {
-            $orderLinkCollection = $this->_objectManager
+            $orderLink = $this->_objectManager
                 ->get('Nimbbl\Magento\Model\OrderLink')
                 ->getCollection()
                 ->addFilter('nimbbl_order_id', $nimbblOrderId)
-                ->getFirstItem();
-
-            $orderLink = $orderLinkCollection->getData();
+                ->getFirstItem()
+                ->getData();
             if (!empty($orderLink['quote_id'])) {
-                $order = $this->getOrderByQuoteId((int) $orderLink['quote_id']);
-                if ($order) {
-                    $this->debugLog('Nimbbl Webhook: resolved order via OrderLink nimbbl_order_id=' . $nimbblOrderId);
-                    return $order;
-                }
+                return (int) $orderLink['quote_id'];
             }
         }
 
@@ -500,26 +482,7 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             return null;
         }
 
-        // Resolve quote_id from invoice_id
-        $invoiceId = trim((string) ($webhookData['order']['invoice_id'] ?? ''));
-        $quoteId   = null;
-
-        if ($invoiceId !== '' && preg_match('/^inv_nimbbl_magento_(\d+)_/', $invoiceId, $m)) {
-            $quoteId = (int) $m[1];
-        }
-
-        if (!$quoteId) {
-            $nimbblOrderId = trim((string) ($webhookData['nimbbl_order_id'] ?? ''));
-            if ($nimbblOrderId !== '') {
-                $orderLink = $this->_objectManager
-                    ->get('Nimbbl\Magento\Model\OrderLink')
-                    ->getCollection()
-                    ->addFilter('nimbbl_order_id', $nimbblOrderId)
-                    ->getFirstItem()
-                    ->getData();
-                $quoteId = !empty($orderLink['quote_id']) ? (int) $orderLink['quote_id'] : null;
-            }
-        }
+        $quoteId = $this->resolveQuoteIdFromWebhookData($webhookData);
 
         if (!$quoteId) {
             $this->logger->error('Nimbbl Webhook: createOrderFromWebhook — could not resolve quote_id.');
@@ -586,7 +549,9 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
                   ->setCustomerIsGuest(true);
         }
 
-        $quote->collectTotals()->save();
+        // collectTotals() only — the submit() call below (or the final setIsActive save) persists the quote.
+        // An intermediate save() here would write the quote twice for no benefit.
+        $quote->collectTotals();
         return $quote;
     }
 
@@ -613,8 +578,11 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             return false;
         }
 
+        $amount = \Nimbbl\Magento\Model\Config::normalizeAmount(
+            $data['transaction']['transaction_amount'] ?? 0
+        );
+
         if ($signatureVersion === 'v3') {
-            $amount = $this->formatAmount($data['transaction']['transaction_amount'] ?? 0);
             $signatureString = implode('|', [
                 $data['order']['invoice_id']                 ?? '',
                 $nimbblTransactionId,
@@ -625,20 +593,13 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
             ]);
         } else {
             // v2 legacy
-            $amount          = sprintf('%.2f', (float) ($data['transaction']['transaction_amount'] ?? 0));
-            $currency        = (string) ($data['transaction']['transaction_currency'] ?? '');
             $invoiceId       = (string) ($data['order']['invoice_id'] ?? '');
+            $currency        = (string) ($data['transaction']['transaction_currency'] ?? '');
             $signatureString = $invoiceId . '|' . $nimbblTransactionId . '|' . $amount . '|' . $currency;
         }
 
-        // PHP 8.2+ deprecates utf8_encode(); use mb_convert_encoding as drop-in replacement.
-        $toUtf8 = static function (string $value): string {
-            return function_exists('mb_convert_encoding')
-                ? mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1')
-                : $value;
-        };
-
-        $generated = hash_hmac('sha256', $toUtf8($signatureString), $toUtf8($keySecret));
+        // HMAC strings are pure ASCII (amounts, currencies, IDs) — no encoding step needed.
+        $generated = hash_hmac('sha256', $signatureString, $keySecret);
 
         if ($generated === $nimbblSignature) {
             $this->debugLog('Nimbbl Webhook: HMAC signature verified OK (version=' . $signatureVersion . ').');
@@ -652,21 +613,6 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
-
-    /**
-     * Normalise amount to exactly 2 decimal places — mirrors WooCommerce format_amount().
-     */
-    protected function formatAmount($amount): string
-    {
-        $inp   = str_replace(',', '', (string) $amount);
-        $parts = explode('.', $inp);
-
-        if (count($parts) === 1) {
-            return $parts[0] . '.00';
-        }
-
-        return $parts[0] . '.' . str_pad(substr($parts[1], 0, 2), 2, '0');
-    }
 
     protected function getRawBody(): string
     {
@@ -734,36 +680,36 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
     {
         $notes = [];
 
+        // Inner helper — builds one conversion note from a currency_conversion block.
+        $buildConvNote = static function (array $conv, string $label): string {
+            $origCurr = strtoupper(trim((string) ($conv['original_currency']    ?? '')));
+            $convCurr = strtoupper(trim((string) ($conv['converted_currency']   ?? '')));
+            $rate     = (float)                  ($conv['exchange_rate']         ?? 0);
+            $origAmt  = (float)                  ($conv['original_total_amount'] ?? 0);
+
+            if ($origCurr !== '' && $convCurr !== '' && $origCurr !== $convCurr) {
+                return sprintf(
+                    '%s currency conversion: %s %.2f → %s (exchange rate: %.6f).',
+                    $label, $origCurr, $origAmt, $convCurr, $rate
+                );
+            }
+            return '';
+        };
+
         $txnConv   = is_array($transaction['currency_conversion']          ?? null) ? $transaction['currency_conversion']          : [];
         $orderConv = is_array($webhookData['order']['currency_conversion'] ?? null) ? $webhookData['order']['currency_conversion'] : [];
 
-        // Transaction-level currency conversion block
         if (!empty($txnConv)) {
-            $origCurr = strtoupper(trim((string) ($txnConv['original_currency']    ?? '')));
-            $convCurr = strtoupper(trim((string) ($txnConv['converted_currency']   ?? '')));
-            $rate     = (float)                  ($txnConv['exchange_rate']         ?? 0);
-            $origAmt  = (float)                  ($txnConv['original_total_amount'] ?? 0);
-
-            if ($origCurr !== '' && $convCurr !== '' && $origCurr !== $convCurr) {
-                $notes[] = sprintf(
-                    'Transaction currency conversion: %s %.2f → %s (exchange rate: %.6f).',
-                    $origCurr, $origAmt, $convCurr, $rate
-                );
+            $note = $buildConvNote($txnConv, 'Transaction');
+            if ($note !== '') {
+                $notes[] = $note;
             }
         }
 
-        // Order-level currency conversion block
         if (!empty($orderConv)) {
-            $origCurr = strtoupper(trim((string) ($orderConv['original_currency']    ?? '')));
-            $convCurr = strtoupper(trim((string) ($orderConv['converted_currency']   ?? '')));
-            $rate     = (float)                  ($orderConv['exchange_rate']         ?? 0);
-            $origAmt  = (float)                  ($orderConv['original_total_amount'] ?? 0);
-
-            if ($origCurr !== '' && $convCurr !== '' && $origCurr !== $convCurr) {
-                $notes[] = sprintf(
-                    'Order currency conversion: %s %.2f → %s (exchange rate: %.6f).',
-                    $origCurr, $origAmt, $convCurr, $rate
-                );
+            $note = $buildConvNote($orderConv, 'Order');
+            if ($note !== '') {
+                $notes[] = $note;
             }
         }
 
@@ -784,28 +730,43 @@ class Webhook extends \Nimbbl\Magento\Controller\BaseController
     }
 
     /**
-     * Returns true when the payment mode string represents Cash on Delivery.
+     * Process a refund_success or refund_failed webhook event.
      *
-     * COD orders must stay in STATE_PROCESSING (cash has not yet been collected);
-     * advancing them to STATE_COMPLETE would falsely imply fulfilment.
-     * Mirrors WooCommerce's is_cod_payment_mode() helper.
+     * Consolidates the shared transaction-ID mismatch guard and refundId extraction
+     * for both refund event types. The only difference is whether the order is closed
+     * and the note label.
+     *
+     * @param SalesOrder $order
+     * @param array      $webhookData
+     * @param string     $nimbblTransactionId
+     * @param bool       $isSuccess  true = refund_success, false = refund_failed
      */
-    private function isCodPaymentMode(string $mode): bool
-    {
-        return strtolower(trim($mode)) === 'cash on delivery';
-    }
+    private function handleRefundEvent(
+        SalesOrder $order,
+        array      $webhookData,
+        string     $nimbblTransactionId,
+        bool       $isSuccess
+    ): void {
+        $orderTxnId   = $order->getPayment()->getLastTransId();
+        $webhookTxnId = trim($nimbblTransactionId);
+        $eventLabel   = $isSuccess ? 'refund_success' : 'refund_failed';
 
-    /**
-     * Write a debug message only when Debug Logging is enabled in admin config.
-     *
-     * Use this for implementation-detail messages (which verification path was taken,
-     * which order-lookup strategy matched, etc.) that produce noise in production
-     * but are invaluable during integration testing.
-     */
-    private function debugLog(string $message): void
-    {
-        if ($this->config->isDebugEnabled()) {
-            $this->logger->debug($message);
+        if ($webhookTxnId !== '' && $orderTxnId !== '' && $webhookTxnId !== $orderTxnId) {
+            $this->logger->info('Nimbbl Webhook: ' . $eventLabel . ' — txn ID mismatch, ignoring. ' .
+                'order_txn=' . $orderTxnId . ' webhook_txn=' . $webhookTxnId);
+            return;
         }
+
+        $refundId = (string) ($webhookData['refund_id'] ?? ($webhookData['refund']['refund_id'] ?? ''));
+        $outcome  = $isSuccess ? 'successful' : 'failed';
+        $note     = 'Refund ' . $outcome . ' (from Nimbbl webhook).' . ($refundId ? ' Refund ID: ' . $refundId : '');
+
+        if ($isSuccess) {
+            $order->setState(SalesOrder::STATE_CLOSED)->setStatus('closed');
+        }
+
+        $order->addCommentToStatusHistory($note);
+        $order->save();
+        $this->logger->info('Nimbbl Webhook: ' . $eventLabel . ' — order ' . $order->getIncrementId());
     }
 }

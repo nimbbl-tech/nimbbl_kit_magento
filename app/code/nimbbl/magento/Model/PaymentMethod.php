@@ -459,7 +459,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             ));
         }
 
-        $amount = $this->formatSignatureAmount($grandTotal);
+        $amount = \Nimbbl\Magento\Model\Config::normalizeAmount($grandTotal);
 
         if ($signatureVersion === 'v3') {
             $status  = (string) ($additionalData['nimbbl_status'] ?? 'success');
@@ -470,7 +470,9 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             $signatureString = $invoiceId . '|' . $nimbblTransactionId . '|' . $amount . '|' . $currency;
         }
 
-        $generated = hash_hmac('sha256', $signatureString, (string) $this->key_secret);
+        // Use config->getKeySecret() to respect the test/live key split (G3).
+        // Using $this->key_secret directly bypasses that and always uses the legacy key.
+        $generated = hash_hmac('sha256', $signatureString, $this->config->getKeySecret());
 
         if ($generated !== $nimbblSignature) {
             $this->_logger->critical('Nimbbl: signature mismatch. version=' . $signatureVersion .
@@ -546,22 +548,6 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
                 'txn_id=' . $nimbblTransactionId . ' error=' . $e->getMessage());
             return [];
         }
-    }
-
-    /**
-     * Normalise a grand-total float to exactly 2 decimal places for HMAC string construction.
-     * Must match the format Nimbbl uses server-side (same logic as Webhook.php formatAmount()).
-     */
-    protected function formatSignatureAmount(float $amount): string
-    {
-        $inp   = str_replace(',', '', number_format($amount, 2, '.', ''));
-        $parts = explode('.', $inp);
-
-        if (count($parts) === 1) {
-            return $parts[0] . '.00';
-        }
-
-        return $parts[0] . '.' . str_pad(substr($parts[1], 0, 2), 2, '0');
     }
 
     protected function getPostData()
@@ -647,19 +633,6 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             // Non-fatal: refund was initiated successfully; only the annotation failed.
             $this->_logger->warning('Nimbbl: Could not update OrderLink with refund_id — ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Returns true when the payment mode string represents Cash on Delivery.
-     *
-     * COD payments are collected physically on delivery, so the digital payment
-     * confirmation is informational only — the order should stay in STATE_PROCESSING
-     * rather than being marked complete immediately.
-     * Mirrors Webhook.php::isCodPaymentMode() and WooCommerce's equivalent helper.
-     */
-    private function isCodPaymentMode(string $mode): bool
-    {
-        return strtolower(trim($mode)) === 'cash on delivery';
     }
 
     /**

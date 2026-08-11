@@ -707,46 +707,16 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
                     // G2/G5: Determine payment outcome from the verified SDK payload.
                     $rawStatus   = $p['checkout_status']
                         ?? ($p['transaction']['status'] ?? ($p['status'] ?? ''));
-                    $s           = strtolower(trim((string) $rawStatus));
-                    $reason      = strtolower(trim((string) ($p['reason'] ?? '')));
+                    $reason      = (string) ($p['reason'] ?? '');
                     $failMessage = (string) ($p['message']
                         ?? ($p['transaction']['failure_reason']
                         ?? ($p['transaction']['message'] ?? '')));
 
-                    if (in_array($s, ['succeeded', 'success'], true)) {
-                        $outcome = 'success';
-                    } elseif ($s === 'authorized' || $reason === 'payment_authorized') {
-                        $outcome = 'authorized';
-                    } elseif (in_array($s, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
-                        $outcome = 'failed';
-                    } else {
-                        // Empty or unknown status — Transaction Enquiry (P1 block below) may
-                        // resolve it; if not, 'pending' routes the customer back to cart rather
-                        // than placing an order with an unconfirmed payment (mirrors WooCommerce
-                        // resolve_nimbbl_callback() which also defaults to 'pending').
-                        $outcome = 'pending';
-                    }
+                    $outcome = $this->classifyNimbblStatus((string) $rawStatus, $reason);
 
                     // P1: Override with authoritative status from Transaction Enquiry API.
-                    // Mirrors WooCommerce resolve_nimbbl_callback() → get_nimbbl_transaction_enquiry().
-                    // C1: Read payment_status first (primary field in fetch() response), then fall
-                    // through to status / transaction.status for forward-compatibility.
-                    $enquiry = $this->fetchTransactionEnquiry((string) $txnId);
-                    if (!empty($enquiry)) {
-                        $apiStatus = strtolower(trim((string) ($enquiry['payment_status']
-                            ?? ($enquiry['status']
-                            ?? ($enquiry['transaction']['status'] ?? '')))));
-                        if (in_array($apiStatus, ['succeeded', 'success'], true)) {
-                            $outcome = 'success';
-                        } elseif ($apiStatus === 'authorized') {
-                            $outcome = 'authorized';
-                        } elseif (in_array($apiStatus, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
-                            $outcome = 'failed';
-                        }
-                        if ($apiStatus !== '') {
-                            $this->debugLog('Nimbbl: P1 Transaction Enquiry override — api_status=' . $apiStatus . ' outcome=' . $outcome);
-                        }
-                    }
+                    // Only fires when the local classification was inconclusive ('pending').
+                    $this->applyEnquiryOverride($outcome, (string) $txnId);
 
                     return [
                         'transaction_id' => (string) $txnId,
@@ -797,23 +767,17 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
             return null;
         }
 
-        // PHP 8.2+: use mb_convert_encoding instead of deprecated utf8_encode().
-        $toUtf8 = function (string $v): string {
-            return function_exists('mb_convert_encoding')
-                ? mb_convert_encoding($v, 'UTF-8', 'ISO-8859-1')
-                : $v;
-        };
-
         if ($sigVer === 'v3') {
             $sigStr = $invoiceId . '|' . $txnId . '|'
-                . number_format($amount, 2, '.', '') . '|'
+                . \Nimbbl\Magento\Model\Config::normalizeAmount($amount) . '|'
                 . $currency . '|' . $status . '|' . $txnType;
         } else {
             $sigStr = $invoiceId . '|' . $txnId . '|'
-                . number_format($amount, 2, '.', '') . '|' . $currency;
+                . \Nimbbl\Magento\Model\Config::normalizeAmount($amount) . '|' . $currency;
         }
 
-        $expected = hash_hmac('sha256', $toUtf8($sigStr), $toUtf8($keySecret));
+        // HMAC strings are pure ASCII (amount, currency, txn IDs, invoice IDs) — no encoding step needed.
+        $expected = hash_hmac('sha256', $sigStr, $keySecret);
         if (!hash_equals($expected, (string) $sig)) {
             $this->logger->error('Nimbbl: redirect HMAC mismatch — version=' . $sigVer);
             return null;
@@ -822,46 +786,17 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
         $this->debugLog('Nimbbl: redirect HMAC OK — version=' . $sigVer . ' txn_id=' . $txnId);
 
         // G2/G5: Determine payment outcome from the HMAC-verified status field.
-        $s = strtolower(trim((string) $status));
-        if (in_array($s, ['succeeded', 'success'], true)) {
-            $hmacOutcome = 'success';
-        } elseif ($s === 'authorized') {
-            $hmacOutcome = 'authorized';
-        } elseif (in_array($s, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
-            $hmacOutcome = 'failed';
-        } else {
-            // Empty or unknown status — Transaction Enquiry (P1 block below) may
-            // resolve it; if not, 'pending' routes the customer back to cart rather
-            // than placing an order with an unconfirmed payment (mirrors WooCommerce
-            // resolve_nimbbl_callback() which also defaults to 'pending').
-            $hmacOutcome = 'pending';
-        }
+        $outcome = $this->classifyNimbblStatus((string) $status);
 
         // P1: Override with authoritative status from Transaction Enquiry API (HMAC path).
-        // C1: Read payment_status first (primary field in fetch() response), then fall
-        // through to status / transaction.status for forward-compatibility.
-        $enquiry = $this->fetchTransactionEnquiry((string) $txnId);
-        if (!empty($enquiry)) {
-            $apiStatus = strtolower(trim((string) ($enquiry['payment_status']
-                ?? ($enquiry['status']
-                ?? ($enquiry['transaction']['status'] ?? '')))));
-            if (in_array($apiStatus, ['succeeded', 'success'], true)) {
-                $hmacOutcome = 'success';
-            } elseif ($apiStatus === 'authorized') {
-                $hmacOutcome = 'authorized';
-            } elseif (in_array($apiStatus, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
-                $hmacOutcome = 'failed';
-            }
-            if ($apiStatus !== '') {
-                $this->debugLog('Nimbbl: P1 Transaction Enquiry override (HMAC path) — api_status=' . $apiStatus . ' outcome=' . $hmacOutcome);
-            }
-        }
+        // Only fires when the local classification was inconclusive ('pending').
+        $this->applyEnquiryOverride($outcome, (string) $txnId);
 
         return [
             'transaction_id' => (string) $txnId,
             'order_id'       => (string) ($orderId ?? ''),
             'payment_mode'   => (string) $paymentMode,
-            'outcome'        => $hmacOutcome,
+            'outcome'        => $outcome,
             'message'        => '',
         ];
     }
@@ -895,15 +830,61 @@ class Order extends \Nimbbl\Magento\Controller\BaseController
     }
 
     /**
-     * Write a debug message only when Debug Logging is enabled in admin config.
+     * Map a raw Nimbbl status string to a canonical outcome.
      *
-     * Use this instead of $this->logger->debug() directly so verbose output
-     * can be suppressed in production without a code deploy.
+     * @param  string $status  Raw status from SDK payload or Transaction Enquiry.
+     * @param  string $reason  Optional reason field from the SDK payload.
+     * @return string  'success' | 'authorized' | 'failed' | 'pending'
      */
-    private function debugLog(string $message): void
+    private function classifyNimbblStatus(string $status, string $reason = ''): string
     {
-        if ($this->config->isDebugEnabled()) {
-            $this->logger->debug($message);
+        $s = strtolower(trim($status));
+        $r = strtolower(trim($reason));
+
+        if (in_array($s, ['succeeded', 'success'], true)) {
+            return 'success';
         }
+        if ($s === 'authorized' || $r === 'payment_authorized') {
+            return 'authorized';
+        }
+        if (in_array($s, ['failed', 'cancelled', 'canceled', 'expired', 'declined', 'voided'], true)) {
+            return 'failed';
+        }
+        // Empty or unknown status → 'pending'; applyEnquiryOverride() resolves it via the API.
+        return 'pending';
+    }
+
+    /**
+     * Override $outcome using the authoritative Nimbbl Transaction Enquiry API.
+     *
+     * P1: Only fires when local classification returned 'pending' (inconclusive status).
+     * Mirrors WooCommerce resolve_nimbbl_callback() → get_nimbbl_transaction_enquiry().
+     * C1: Reads payment_status first, then falls through to status / transaction.status.
+     *
+     * @param string $outcome  Current outcome, passed by reference; updated when the API is conclusive.
+     * @param string $txnId    Nimbbl transaction ID.
+     */
+    private function applyEnquiryOverride(string &$outcome, string $txnId): void
+    {
+        // Skip the API call when we already have a conclusive outcome (efficiency: avoids
+        // an unnecessary network round-trip on every success/authorized/failed redirect).
+        if ($outcome !== 'pending') {
+            return;
+        }
+        $enquiry = $this->fetchTransactionEnquiry($txnId);
+        if (empty($enquiry)) {
+            return;
+        }
+        $apiStatus = strtolower(trim((string) ($enquiry['payment_status']
+            ?? ($enquiry['status']
+            ?? ($enquiry['transaction']['status'] ?? '')))));
+        if ($apiStatus === '') {
+            return;
+        }
+        $resolved = $this->classifyNimbblStatus($apiStatus);
+        if ($resolved !== 'pending') {
+            $outcome = $resolved;
+        }
+        $this->debugLog('Nimbbl: P1 Transaction Enquiry override — api_status=' . $apiStatus . ' outcome=' . $outcome);
     }
 }
