@@ -547,7 +547,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
     {
         try {
             $client   = $this->nimbblClientFactory->create();
-            $txnData  = $client->transactions()->fetch($nimbblTransactionId);
+            $txnData  = $client->transactions()->transactionEnquiry(['nimbbl_transaction_id' => $nimbblTransactionId]);
 
             $apiStatus   = strtolower(trim((string) ($txnData['payment_status'] ?? ($txnData['status'] ?? ''))));
             $apiAmount   = (float) ($txnData['total_amount'] ?? ($txnData['amount'] ?? 0));
@@ -627,7 +627,12 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
 
         try {
             $client = $this->nimbblClientFactory->create();
-            $result = $client->refunds()->create($txnId, (float) $amount, $currency, 'merchant_initiated');
+            $result = $client->refunds()->initiateRefund([
+                'transaction_id' => $txnId,
+                'refund_amount'  => round((float) $amount, 2),
+                'currency'       => $currency,
+                'reason'         => 'merchant_initiated',
+            ]);
 
             $refundId = (string) ($result['refund_id'] ?? ($result['id'] ?? ''));
 
