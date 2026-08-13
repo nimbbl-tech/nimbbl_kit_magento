@@ -25,34 +25,18 @@ class NimbblOrdersProxy
     /**
      * Create an order via Nimbbl v3 API.
      *
-     * Auto-generates a merchant token; retries once on 401.
+     * Token generation and retry-on-401 are handled by NimbblCurlClient::postAuthenticated().
      *
-     * @param  array $attributes  Order payload (snake_case fields)
-     * @param  string|null $token Optional pre-generated token (ignored here; token is always fresh)
-     * @return array              API response array
-     * @throws \RuntimeException  on HTTP or token error
+     * @param  array       $attributes  Order payload (snake_case fields)
+     * @param  string|null $token       Unused; accepted for interface parity with the SDK.
+     * @return array                    API response array
+     * @throws \RuntimeException        On HTTP or token error
      */
     public function createOrder(array $attributes, ?string $token = null): array
     {
-        $url   = $this->client->getApiBase() . '/create-order';
-        $body  = json_encode($attributes);
-        $token = $this->client->generateToken();
-
-        $response = $this->client->post($url, $body, $token);
-
-        // Retry once if token expired (shouldn't happen, but defensive)
-        if (($response['_http_code'] ?? 0) === 401) {
-            $token    = $this->client->generateToken();
-            $response = $this->client->post($url, $body, $token);
-        }
-
-        if (($response['_http_code'] ?? 0) >= 400) {
-            throw new \RuntimeException(
-                'Nimbbl create-order failed (HTTP ' . ($response['_http_code'] ?? '?') . '): ' . json_encode($response)
-            );
-        }
-
-        unset($response['_http_code']);
-        return $response;
+        return $this->client->postAuthenticated(
+            $this->client->getApiBase() . '/create-order',
+            json_encode($attributes)
+        );
     }
 }

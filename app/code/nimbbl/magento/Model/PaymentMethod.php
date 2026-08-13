@@ -157,16 +157,8 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
         $this->productMetaData = $productMetaData;
         $this->regionFactory = $regionFactory;
         $this->orderRepository = $orderRepository;
-
-        $this->key_id = $this->config->getConfigData(Config::KEY_PUBLIC_KEY);
-        $this->key_secret = $this->config->getConfigData(Config::KEY_PRIVATE_KEY);
-
-        // $this->rzp = new Api($this->key_id, $this->key_secret);
-
         $this->order               = $order;
         $this->nimbblClientFactory = $nimbblClientFactory;
-
-        // $this->rzp->setHeader('User-Agent', 'Nimbbl/'. $this->getChannel());
     }
 
     /**
@@ -513,8 +505,6 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
             $signatureString = $invoiceId . '|' . $nimbblTransactionId . '|' . $amount . '|' . $currency;
         }
 
-        // Use config->getKeySecret() to respect the test/live key split (G3).
-        // Using $this->key_secret directly bypasses that and always uses the legacy key.
         $generated = hash_hmac('sha256', $signatureString, $this->config->getKeySecret());
 
         if ($generated !== $nimbblSignature) {

@@ -42,38 +42,18 @@ class NimbblRefundsProxy
      * Mirrors SDK: Nimbbl\Api\Services\Refund::initiateRefund($attributes)
      * Endpoint:    POST /api/v3/refund
      *
-     * Auto-generates a merchant token; retries once on 401.
+     * Token generation and retry-on-401 are handled by NimbblCurlClient::postAuthenticated().
      *
      * @param  array       $attributes  Refund payload — see class docblock for required keys.
-     * @param  string|null $token       Optional pre-generated token (ignored; always generates fresh).
+     * @param  string|null $token       Unused; accepted for interface parity with the SDK.
      * @return array                    API response array
      * @throws \RuntimeException        On HTTP or token errors
      */
     public function initiateRefund(array $attributes = [], ?string $token = null): array
     {
-        $url = $this->client->getApiBase() . '/refund';
-
-        $body = json_encode($attributes);
-
-        $token    = $this->client->generateToken();
-        $response = $this->client->post($url, $body, $token);
-
-        // Retry once on 401 (token race)
-        if (($response['_http_code'] ?? 0) === 401) {
-            $token    = $this->client->generateToken();
-            $response = $this->client->post($url, $body, $token);
-        }
-
-        if (($response['_http_code'] ?? 0) >= 400) {
-            $txnId = (string) ($attributes['transaction_id'] ?? '');
-            $msg   = $response['message'] ?? $response['error'] ?? json_encode($response);
-            throw new \RuntimeException(
-                'Nimbbl refund failed (HTTP ' . ($response['_http_code'] ?? '?') .
-                ') txn_id=' . $txnId . ': ' . $msg
-            );
-        }
-
-        unset($response['_http_code']);
-        return $response;
+        return $this->client->postAuthenticated(
+            $this->client->getApiBase() . '/refund',
+            json_encode($attributes)
+        );
     }
 }

@@ -38,35 +38,18 @@ class NimbblTransactionsProxy
      * Mirrors SDK: Nimbbl\Api\Services\Transaction::transactionEnquiry($attributes)
      * Endpoint:    POST /api/v3/transaction-enquiry
      *
-     * Auto-generates a merchant token; retries once on 401.
+     * Token generation and retry-on-401 are handled by NimbblCurlClient::postAuthenticated().
      *
-     * @param  array  $attributes  Must include 'nimbbl_transaction_id' key.
-     * @return array               API response array
-     * @throws \RuntimeException   On HTTP or token errors
+     * @param  array       $attributes  Must include 'nimbbl_transaction_id' key.
+     * @param  string|null $token       Unused; accepted for interface parity with the SDK.
+     * @return array                    API response array
+     * @throws \RuntimeException        On HTTP or token errors
      */
     public function transactionEnquiry(array $attributes = [], ?string $token = null): array
     {
-        $url  = $this->client->getApiBase() . '/transaction-enquiry';
-        $body = json_encode($attributes);
-
-        $token    = $this->client->generateToken();
-        $response = $this->client->post($url, $body, $token);
-
-        // Retry once if the token expired (race between order creation and callback)
-        if (($response['_http_code'] ?? 0) === 401) {
-            $token    = $this->client->generateToken();
-            $response = $this->client->post($url, $body, $token);
-        }
-
-        if (($response['_http_code'] ?? 0) >= 400) {
-            $txnId = (string) ($attributes['nimbbl_transaction_id'] ?? '');
-            throw new \RuntimeException(
-                'Nimbbl transaction-enquiry failed (HTTP ' . ($response['_http_code'] ?? '?') .
-                ') txn_id=' . $txnId . ': ' . json_encode($response)
-            );
-        }
-
-        unset($response['_http_code']);
-        return $response;
+        return $this->client->postAuthenticated(
+            $this->client->getApiBase() . '/transaction-enquiry',
+            json_encode($attributes)
+        );
     }
 }

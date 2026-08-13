@@ -100,12 +100,48 @@ class NimbblCurlClient
     }
 
     /**
+     * POST $url with JSON $body, generating a fresh token and retrying once on 401.
+     *
+     * This is the primary method for all authenticated API calls. It handles the
+     * token lifecycle internally so callers never touch `_http_code`.
+     *
+     * @param  string $url   Full endpoint URL.
+     * @param  string $body  JSON-encoded request body.
+     * @return array         Decoded response body (no `_http_code` key).
+     * @throws \RuntimeException On HTTP >= 400 after retry.
+     */
+    public function postAuthenticated(string $url, string $body): array
+    {
+        $token    = $this->generateToken();
+        $response = $this->post($url, $body, $token);
+
+        // Retry once on 401 (token race between order creation and callback)
+        if (($response['_http_code'] ?? 0) === 401) {
+            $token    = $this->generateToken();
+            $response = $this->post($url, $body, $token);
+        }
+
+        $code = $response['_http_code'] ?? 0;
+        unset($response['_http_code']);
+
+        if ($code >= 400) {
+            throw new \RuntimeException(
+                'Nimbbl API POST ' . $url . ' failed (HTTP ' . $code . '): ' . json_encode($response)
+            );
+        }
+
+        return $response;
+    }
+
+    /**
      * POST $url with JSON $body, optionally authenticated.
+     *
+     * Prefer {@see postAuthenticated()} for all token-gated endpoints.
      *
      * @param  string      $url
      * @param  string      $body
      * @param  string|null $token
-     * @return array
+     * @return array       Decoded JSON response with '_http_code' key appended
      */
     public function post(string $url, string $body, ?string $token = null): array
     {
@@ -126,14 +162,7 @@ class NimbblCurlClient
             CURLOPT_TIMEOUT        => 30,
         ]);
 
-        $raw  = curl_exec($curl);
-        $code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        $decoded = json_decode((string) $raw, true) ?? [];
-        $decoded['_http_code'] = $code;
-
-        return $decoded;
+        return $this->executeCurl($curl);
     }
 
     /**
@@ -161,6 +190,20 @@ class NimbblCurlClient
             CURLOPT_TIMEOUT        => 30,
         ]);
 
+        return $this->executeCurl($curl);
+    }
+
+    /**
+     * Execute a curl handle, decode the JSON response, and append `_http_code`.
+     *
+     * Centralises the curl lifecycle (exec → getinfo → close → decode) so post()
+     * and get() share a single implementation path.
+     *
+     * @param  \CurlHandle $curl  A configured handle (options already set).
+     * @return array              Decoded body with `_http_code` appended.
+     */
+    private function executeCurl(\CurlHandle $curl): array
+    {
         $raw  = curl_exec($curl);
         $code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
