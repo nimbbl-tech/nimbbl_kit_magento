@@ -35,6 +35,17 @@ abstract class BaseController extends \Magento\Framework\App\Action\Action
      * @var \Nimbbl\Magento\Model\Checkout
      */
     protected $checkout;
+    protected $config;
+    protected $key_id;
+    protected $key_secret;
+
+    /**
+     * PSR-3 logger — populated by subclasses that inject \Psr\Log\LoggerInterface.
+     * Declared here so debugLog() can reference it without type-unsafe dynamic property access.
+     *
+     * @var \Psr\Log\LoggerInterface|null
+     */
+    protected $logger = null;
 
     /**
      * @param \Magento\Framework\App\Action\Context $context
@@ -57,6 +68,20 @@ abstract class BaseController extends \Magento\Framework\App\Action\Action
         $this->key_secret = $this->config->getConfigData(Config::KEY_PRIVATE_KEY);
 
         // $this->rzp = new Api($this->key_id, $this->key_secret);
+    }
+
+    /**
+     * Write a debug message only when Debug Logging is enabled in admin config.
+     *
+     * Subclasses that inject \Psr\Log\LoggerInterface into $this->logger call this
+     * instead of $this->logger->debug() directly, so verbose output can be suppressed
+     * in production without a code deploy.
+     */
+    protected function debugLog(string $message): void
+    {
+        if ($this->logger !== null && $this->config->isDebugEnabled()) {
+            $this->logger->debug($message);
+        }
     }
 
     /**

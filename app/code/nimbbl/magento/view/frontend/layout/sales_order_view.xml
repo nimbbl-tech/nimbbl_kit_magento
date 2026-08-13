@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+    Injects the Nimbbl payment details panel into the customer's
+    My Account > Order View page.
+
+    Uses the `content` container (always present in core Magento_Sales layouts)
+    and places the block after `sales.order.info` — the last built-in child
+    block in that container on this handle.
+
+    NOTE: `order_details` does not exist in any Magento 2.4.x frontend layout
+    and would silently discard the block if used as the reference target.
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="Nimbbl\Magento\Block\Frontend\Order\NimbblInfo"
+                   name="nimbbl.order.info"
+                   template="Nimbbl_Magento::order/nimbbl_info.phtml"
+                   after="sales.order.info" />
+        </referenceContainer>
+    </body>
+</page>

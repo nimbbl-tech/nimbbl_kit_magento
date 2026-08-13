@@ -70,3 +70,9 @@ atlassian*
 /generated/*
 !/generated/.htaccess
 .DS_Store
+
+# Nimbbl dev artefacts
+/app/code/nimbbl/magento/Test/
+/public/v1.0.0/*.tar.gz
+/public/v1.0.0/*.tar
+/public/v1.0.0/*.zip

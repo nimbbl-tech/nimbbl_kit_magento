@@ -30,4 +30,21 @@
 	        <argument name="logger" xsi:type="object">NimbblLogger</argument>
 	    </arguments>
 	</type>
+
+	<!--
+	    Wrap NimbblLogger inside a Magento\Payment\Model\Method\Logger so that
+	    PaymentMethod::$_logger (AbstractMethod's protected logger) also writes to
+	    var/log/Nimbbl/nimbbl_YYYY_MM_DD.log instead of the default var/log/payment.log.
+	-->
+	<virtualType name="NimbblPaymentMethodLogger" type="Magento\Payment\Model\Method\Logger">
+	    <arguments>
+	        <argument name="logger" xsi:type="object">NimbblLogger</argument>
+	    </arguments>
+	</virtualType>
+
+	<type name="Nimbbl\Magento\Model\PaymentMethod">
+	    <arguments>
+	        <argument name="logger" xsi:type="object">NimbblPaymentMethodLogger</argument>
+	    </arguments>
+	</type>
 </config>

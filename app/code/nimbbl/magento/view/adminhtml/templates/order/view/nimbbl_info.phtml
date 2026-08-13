@@ -1,0 +1,65 @@
+<?php
+/**
+ * @var \Nimbbl\Magento\Block\Adminhtml\Order\View\NimbblInfo $block
+ */
+
+// Only render when the order was paid via Nimbbl.
+if (!$block->getNimbblOrderLink()) {
+    return;
+}
+
+$nimbblOrderId  = $block->escapeHtml($block->getNimbblOrderId());
+$nimbblTxnId    = $block->escapeHtml($block->getNimbblTransactionId());
+$fulfilledVia   = $block->escapeHtml($block->getFulfilledVia());
+$invoiceId      = $block->escapeHtml($block->getInvoiceId());
+$paymentMode    = $block->escapeHtml($block->getPaymentMode());
+?>
+<section class="admin__page-section">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml(__('Nimbbl Payment Details')) ?></span>
+    </div>
+    <div class="admin__page-section-content">
+        <table class="admin__table-secondary order-payment-info">
+            <tbody>
+                <?php if ($nimbblOrderId): ?>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Nimbbl Order ID')) ?></th>
+                    <td>
+                        <span class="admin__field-value"><?= $nimbblOrderId ?></span>
+                    </td>
+                </tr>
+                <?php endif; ?>
+                <?php if ($nimbblTxnId): ?>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Nimbbl Transaction ID')) ?></th>
+                    <td>
+                        <span class="admin__field-value"><?= $nimbblTxnId ?></span>
+                    </td>
+                </tr>
+                <?php endif; ?>
+                <?php if ($invoiceId): ?>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Nimbbl Invoice ID')) ?></th>
+                    <td>
+                        <span class="admin__field-value"><?= $invoiceId ?></span>
+                    </td>
+                </tr>
+                <?php endif; ?>
+                <?php if ($paymentMode): ?>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Payment Mode')) ?></th>
+                    <td>
+                        <span class="admin__field-value"><?= $paymentMode ?></span>
+                    </td>
+                </tr>
+                <?php endif; ?>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Fulfilled Via')) ?></th>
+                    <td>
+                        <span class="admin__field-value"><?= $fulfilledVia ?></span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
