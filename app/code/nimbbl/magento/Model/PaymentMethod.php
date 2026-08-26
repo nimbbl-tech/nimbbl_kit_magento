@@ -24,6 +24,7 @@ class PaymentMethod extends \Magento\Payment\Model\Method\AbstractMethod
     const METHOD_CODE                   = 'nimbbl';
     const CONFIG_MASKED_FIELDS          = 'masked_fields';
     const CURRENCY                      = 'INR';
+    const ORDER_SOURCE                  = 'magento';
 
     /**
      * @var string
